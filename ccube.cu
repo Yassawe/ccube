@@ -23,6 +23,9 @@ struct Node {
     int parent;
     int left; //order [left, right].
     int right;
+
+    int* lock_reduce;
+    int* lock_broadcast;
     
     float *buffer; 
 }
@@ -91,7 +94,7 @@ void allreduce(void* sendbuff, void* recvbuff, int count, int chunk_size){
 
 __global__ void reduce_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){ //make it agnostic to where it runs
 
-    
+
 
 }
 

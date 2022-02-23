@@ -24,8 +24,12 @@ struct Node {
     int left; //order [left, right].
     int right;
 
-    int* lock_reduce;
-    int* lock_broadcast;
+    int* r_lock;
+    int* b_lock;
+
+    int* r_done;
+    int* b_done;
+
     
     float *buffer; 
 }
@@ -95,66 +99,110 @@ void allreduce(void* sendbuff, void* recvbuff, int message_size, int chunk_size)
 __global__ void reduce_kernel(float* self_buff, 
                               float* left_buff, 
                               float* right_buff, 
-                              volatile int* self_lock, 
-                              int* parent_lock,
+                              volatile int* r_lock_self, 
+                              int* r_lock_parent,
+                              volatile int* r_done_self,
+                              int* r_done_left,
+                              int* r_done_right,
+                              int* b_lock_left,
+                              int* b_lock_right,
                               int num_chunks)
 {
 
     // grid size = number of elements in a chunk
     
-    int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    int gid = blockIdx.x*blockDim.x + threadIdx.x;
+    int tid = threadIdx.x;
     int gsize = gridDim.x*blockDim.x; 
+
     int i=0;
     int index = 0;
 
-    //data-independent condition, so no branch divergence
+    //data-independent conditioning, so no branch divergence (?)
     if(parent_buff){
         // not root
         if(left_buff && right_buff){
             // two children
             for(i = 0; i<num_chunks; i++){
-                index = tid + i*gsize;
-
-                while(*self_lock == 0);
+                index = gid + i*gsize;
+                while(*r_lock_self == 0); //TODO: make each lock block dependent, for global sync
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
-
                 if(tid == 0){
-                    *self_lock = 0;
-                    *parent_lock = 1;
-                } 
-                
+                    *r_lock_self = 0;
+                    *r_lock_parent = 1;
+                }   
+            }
+            if(tid==0){
+                *r_done_left = 1;
+                *r_done_right = 1;
             }
         }
         else if (left_buff){
             // one children
             for(i=0; i<num_chunks; i++){
-                index = tid + i*gsize;
-                while(*self_lock == 0);
-
+                index = gid + i*gsize;
+                while(*r_lock_self == 0);
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
-
                 if(tid == 0){
-                    *self_lock = 0;
-                    *parent_lock = 1;
+                    *r_lock_self = 0;
+                    *r_lock_parent = 1;
                 }
             }
-
+            if (tid ==0){
+                *r_done_left = 1;
+            }
         }
         else{
-            
-            *parent_lock = 1;
+            //leaf
+            if (tid==0){
+                while(*r_done_self == 0){
+                    *r_lock_parent = 1;
+                }
+            }
         }
-        // if no children, do nothing
-        
     }
-
     else{
         // root
-        // no difference except we don't touch parent (which doesn't exist)
+        if(left_buff && right_buff){
+            // two children
+            for(i = 0; i<num_chunks; i++){
+                index = gid + i*gsize;
+                while(*r_lock_self == 0); //TODO: make each lock block dependent, for global sync
+                self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
+                __syncthreads();
+                if(tid == 0){
+                    *r_lock_self = 0;
+                    *b_lock_left = 1;
+                    *b_lock_right = 1;
+                } 
+            }
+            if(tid==0){
+                *r_done_left = 1;
+                *r_done_right = 1;
+                *r_done_self = 1;
+            }
+        }
+        else if (left_buff){
+            // one children
+            for(i=0; i<num_chunks; i++){
+                index = gid + i*gsize;
+                while(*r_lock_self == 0);
+                self_buff[index] = self_buff[index] + left_buff[index];
+                __syncthreads();
+                if(tid == 0){
+                    *r_lock_self = 0;
+                    *b_lock_left = 1;
+                }
+            }
+            if (tid ==0){
+                *r_done_left = 1;
+                *r_done_self = 1;
+            }
+        }
 
-    }
+
 }
 
 __global__ void broadcast_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){

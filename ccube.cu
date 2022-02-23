@@ -10,7 +10,8 @@
 
 // overlap reduction and broadcast under multiport simultaneous send-recieve model
 
-
+#define CHUNK_SIZE 2048 //in float32 elements
+#define BLOCK_SIZE 512
 
 
 // Vanilla C-Cube, no detours, chaining, tricks or any funny business
@@ -37,6 +38,11 @@ struct Node {
 struct Node tree[4];
 
 
+void allocate_lock(int* pointer, int num_blocks){
+    cudaMalloc((void **)&pointer, size*sizeof(int));
+    cudaMemset(pointer, 0, size*sizeof(int));
+}
+
 // prototype for 4 node DGX-1|||| MAKES 0 FUCKING SENSE WHEN TOPOLOGY IS FULLY CONNECTED, EXACTLY 0 BENEFIT OVER 2TREE!!!!
 void createCommunicator(){
     /*
@@ -47,6 +53,10 @@ void createCommunicator(){
            / \
           1   3
     */
+
+    int num_blocks = (CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE;
+
+
     cudaSetDevice(0);
     cudaDeviceEnablePeerAccess(2,0);
     cudaStreamCreateWithFlags(&(tree[0].R_stream), cudaStreamNonBlocking);
@@ -54,6 +64,7 @@ void createCommunicator(){
     tree[0].left = 2;
     tree[0].right = -1;
     tree[0].parent  = -1;
+
 
     cudaSetDevice(1);
     cudaDeviceEnablePeerAccess(2,0);
@@ -84,7 +95,7 @@ void createCommunicator(){
 
 
 // define in-place operation for now
-void allreduce(void* sendbuff, void* recvbuff, int message_size, int chunk_size){
+void allreduce(void* buff, int message_size, int chunk_size){
     // multiprocess function
     // create n threads, each launching reduce_kernel and broadcast_kernel on every device
     // using tree struct

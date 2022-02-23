@@ -64,6 +64,10 @@ void createCommunicator(){
     tree[0].left = 2;
     tree[0].right = -1;
     tree[0].parent  = -1;
+    allocate_lock(tree[0].r_lock, num_blocks);
+    allocate_lock(tree[0].b_lock, num_blocks);
+    allocate_lock(tree[0].r_done, 1);
+    allocate_lock(tree[0].b_done, 1);
 
 
     cudaSetDevice(1);
@@ -73,6 +77,11 @@ void createCommunicator(){
     tree[1].left = -1;
     tree[1].right = -1;
     tree[1].parent = 2;
+    allocate_lock(tree[1].r_lock, num_blocks);
+    allocate_lock(tree[1].b_lock, num_blocks);
+    allocate_lock(tree[1].r_done, 1);
+    allocate_lock(tree[1].b_done, 1);
+
 
     cudaSetDevice(2);
     cudaDeviceEnablePeerAccess(1,0);
@@ -82,6 +91,11 @@ void createCommunicator(){
     tree[2].left = 1;
     tree[2].right = 3;
     tree[2].parent = 0;
+    allocate_lock(tree[2].r_lock, num_blocks);
+    allocate_lock(tree[2].b_lock, num_blocks);
+    allocate_lock(tree[2].r_done, 1);
+    allocate_lock(tree[2].b_done, 1);
+
     
     cudaSetDevice(3);
     cudaDeviceEnablePeerAccess(2,0);
@@ -90,6 +104,10 @@ void createCommunicator(){
     tree[3].left = -1;
     tree[3].right = -1;
     tree[3].parent = 2;
+    allocate_lock(tree[3].r_lock, num_blocks);
+    allocate_lock(tree[3].b_lock, num_blocks);
+    allocate_lock(tree[3].r_done, 1);
+    allocate_lock(tree[3].b_done, 1);
 }
 
 

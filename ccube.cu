@@ -79,12 +79,12 @@ void createCommunicator(){
 
 
 
-
-void allreduce(void* sendbuff, void* recvbuff, int count, int chunk_size){
+// define in-place operation for now
+void allreduce(void* sendbuff, void* recvbuff, int message_size, int chunk_size){
     // multiprocess function
     // create n threads, each launching reduce_kernel and broadcast_kernel on every device
     // using tree struct
-
+    // number of threads should be equal or close to the chunk size
 }
 
 
@@ -92,10 +92,69 @@ void allreduce(void* sendbuff, void* recvbuff, int count, int chunk_size){
 // two streams: reduce and broadcast
 // tree should be a structure visible and referenceable from the device, not only host controlled
 
-__global__ void reduce_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){ //make it agnostic to where it runs
+__global__ void reduce_kernel(float* self_buff, 
+                              float* left_buff, 
+                              float* right_buff, 
+                              volatile int* self_lock, 
+                              int* parent_lock,
+                              int num_chunks)
+{
 
+    // grid size = number of elements in a chunk
+    
+    int tid = blockIdx.x*blockDim.x + threadIdx.x;
+    int gsize = gridDim.x*blockDim.x; 
+    int i=0;
+    int index = 0;
 
+    //data-independent condition, so no branch divergence
+    if(parent_buff){
+        // not root
+        if(left_buff && right_buff){
+            // two children
+            for(i = 0; i<num_chunks; i++){
+                index = tid + i*gsize;
 
+                while(*self_lock == 0);
+                self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
+                __syncthreads();
+
+                if(tid == 0){
+                    *self_lock = 0;
+                    *parent_lock = 1;
+                } 
+                
+            }
+        }
+        else if (left_buff){
+            // one children
+            for(i=0; i<num_chunks; i++){
+                index = tid + i*gsize;
+                while(*self_lock == 0);
+
+                self_buff[index] = self_buff[index] + left_buff[index];
+                __syncthreads();
+
+                if(tid == 0){
+                    *self_lock = 0;
+                    *parent_lock = 1;
+                }
+            }
+
+        }
+        else{
+            
+            *parent_lock = 1;
+        }
+        // if no children, do nothing
+        
+    }
+
+    else{
+        // root
+        // no difference except we don't touch parent (which doesn't exist)
+
+    }
 }
 
 __global__ void broadcast_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){

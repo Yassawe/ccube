@@ -185,7 +185,7 @@ __global__ void reduce_kernel(float* self_buff,
             }
         }
         else if (left_buff){
-            // one children
+            // one child
             for(i=0; i<num_chunks; i++){
                 index = gid + i*gsize;
                 while(*r_lock_self == 0);
@@ -220,51 +220,56 @@ __global__ void broadcast_kernel(float* self_buff,
 
     int i=0;
     int index = 0;
-    
-    if(b_lock_left && b_lock_right){
-        // two children
-        for (i=0; i<num_chunks; i++){
-            index = gid + i*gsize;
-            while(*b_lock_self == 0);
-            self_buff[index] = parent_buff[index];
+
+    if(parent_buff){
+        if(b_lock_left && b_lock_right){
+            // two children
+            for (i=0; i<num_chunks; i++){
+                index = gid + i*gsize;
+                while(*b_lock_self == 0);
+                self_buff[index] = parent_buff[index];
+                __syncthreads();
+                if (tid==0){
+                    *b_lock_self = 0;
+                    *b_lock_left = 1;
+                    *b_lock_right = 1;
+                }
+            }
             if (tid==0){
-                *b_lock_self = 0;
-                *b_lock_left = 1;
-                *b_lock_right = 1;
+                *b_done_parent = 1;
             }
         }
-        if (tid==0){
-            *b_done_parent = 1;
-        }
-    }
-    else if (b_lock_left){
-        // one child
-        for (i=0; i<num_chunks; i++){
-            index = gid + i*gsize;
-            while(*b_lock_self == 0);
-            self_buff[index] = parent_buff[index];
+        else if (b_lock_left){
+            // one child
+            for (i=0; i<num_chunks; i++){
+                index = gid + i*gsize;
+                while(*b_lock_self == 0);
+                self_buff[index] = parent_buff[index];
+                __syncthreads();
+                if (tid==0){
+                    *b_lock_self = 0;
+                    *b_lock_left = 1;
+                }
+            }
             if (tid==0){
-                *b_lock_self = 0;
-                *b_lock_left = 1;
+                *b_done_parent = 1;
             }
         }
-        if (tid==0){
-            *b_done_parent = 1;
-        }
-    }
-    else{
-        // leaf
-        for (i=0; i<num_chunks; i++){
-            index = gid + i*gsize;
-            while(*b_lock_self == 0);
-            self_buff[index] = parent_buff[index];
-            if (tid==0){
-                *b_lock_self = 0;
+        else{
+            // leaf
+            for (i=0; i<num_chunks; i++){
+                index = gid + i*gsize;
+                while(*b_lock_self == 0);
+                self_buff[index] = parent_buff[index];
+                __syncthreads();
+                if (tid==0){
+                    *b_lock_self = 0;
+                }
             }
-        }
-        if (tid==0){
-            *b_done_parent = 1;
-            *b_done_self = 1;
+            if (tid==0){
+                *b_done_parent = 1;
+                *b_done_self = 1;
+            }
         }
     }
 

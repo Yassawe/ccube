@@ -43,7 +43,7 @@ void allocate_lock(int* pointer, int num_blocks){
     cudaMemset(pointer, 0, size*sizeof(int));
 }
 
-// prototype for 4 node DGX-1|||| MAKES 0 FUCKING SENSE WHEN TOPOLOGY IS FULLY CONNECTED, EXACTLY 0 BENEFIT OVER 2TREE!!!!
+// prototype for 4 node DGX-1
 void createCommunicator(){
     /*
     Single Tree logical topology
@@ -233,6 +233,7 @@ __global__ void reduce_kernel(int parent,
                 r_done_self[blockIdx.x] = 1;
             }
         }
+        // if root is a leaf then call the ambulance: 119
 }
 
 __global__ void broadcast_kernel(int parent,

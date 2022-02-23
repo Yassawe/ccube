@@ -203,8 +203,72 @@ __global__ void reduce_kernel(float* self_buff,
         }
 }
 
-__global__ void broadcast_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){
+__global__ void broadcast_kernel(float* self_buff,
+                                 float* parent_buff,
+                                 volatile int* b_lock_self,
+                                 int* b_lock_left,
+                                 int* b_lock_right,
+                                 int* b_done_self,
+                                 int* b_done_parent,
+                                 int num_chunks)
+{
+    
+    // grid size = num of elements in a chunk
+    int gid = blockIdx.x*blockDim.x + threadIdx.x;
+    int tid = threadIdx.x;
+    int gsize = gridDim.x*blockDim.x; 
 
+    int i=0;
+    int index = 0;
+    
+    if(b_lock_left && b_lock_right){
+        // two children
+        for (i=0; i<num_chunks; i++){
+            index = gid + i*gsize;
+            while(*b_lock_self == 0);
+            self_buff[index] = parent_buff[index];
+            if (tid==0){
+                *b_lock_self = 0;
+                *b_lock_left = 1;
+                *b_lock_right = 1;
+            }
+        }
+        if (tid==0){
+            *b_done_parent = 1;
+        }
+    }
+    else if (b_lock_left){
+        // one child
+        for (i=0; i<num_chunks; i++){
+            index = gid + i*gsize;
+            while(*b_lock_self == 0);
+            self_buff[index] = parent_buff[index];
+            if (tid==0){
+                *b_lock_self = 0;
+                *b_lock_left = 1;
+            }
+        }
+        if (tid==0){
+            *b_done_parent = 1;
+        }
+    }
+    else{
+        // leaf
+        for (i=0; i<num_chunks; i++){
+            index = gid + i*gsize;
+            while(*b_lock_self == 0);
+            self_buff[index] = parent_buff[index];
+            if (tid==0){
+                *b_lock_self = 0;
+            }
+        }
+        if (tid==0){
+            *b_done_parent = 1;
+            *b_done_self = 1;
+        }
+    }
+
+    // root: do nothing
 
 }
 

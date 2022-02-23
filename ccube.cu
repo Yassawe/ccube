@@ -201,8 +201,6 @@ __global__ void reduce_kernel(float* self_buff,
                 *r_done_self = 1;
             }
         }
-
-
 }
 
 __global__ void broadcast_kernel(float* self_buff, float* parent_buff, float* left_buff, float* right_buff, int chunksize){

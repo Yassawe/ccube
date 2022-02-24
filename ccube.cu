@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <cuda.h>
 
-// TODO: create fixed topology
-
 // implementation should be agnostic to the node and its position
 
 // should generalize the cases of root, 1 children, 2 children, leaf
@@ -55,7 +53,6 @@ void createCommunicator(){
     */
 
     int num_blocks = (CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE;
-
 
     cudaSetDevice(0);
     cudaDeviceEnablePeerAccess(2,0);
@@ -115,15 +112,9 @@ void createCommunicator(){
 // define in-place operation for now
 void allreduce(void* buff, int message_size, int chunk_size){
     // multiprocess function
-    // create n threads, each launching reduce_kernel and broadcast_kernel on every device
-    // using tree struct
-    // number of threads should be equal or close to the chunk size
+    // create n threads, each launching reduce_kernel and broadcast_kernel on every device using tree struct
 }
 
-
-// adapt the C-Cube under the 3 port simultaneous send-recieve model.
-// two streams: reduce and broadcast
-// tree should be a structure visible and referenceable from the device, not only host controlled
 
 __global__ void reduce_kernel(int parent,
                               int left,
@@ -201,7 +192,7 @@ __global__ void reduce_kernel(int parent,
             // two children
             for(i = 0; i<num_chunks; i++){
                 index = gid + i*gsize;
-                while(r_lock_self[blockIdx.x] == 0); //TODO: make each lock block dependent, for global sync
+                while(r_lock_self[blockIdx.x] == 0); 
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
                 if(tid == 0){
@@ -258,6 +249,7 @@ __global__ void broadcast_kernel(int parent,
     int index = 0;
 
     if(parent!=-1){
+        //not root
         if(left!=-1 && right!=-1){
             // two children
             for (i=0; i<num_chunks; i++){

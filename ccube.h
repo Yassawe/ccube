@@ -10,11 +10,11 @@ struct Node {
     int left;
     int right;
 
-    int* r_lock;
-    int* b_lock;
+    volatile int* r_lock;
+    volatile int* b_lock;
 
-    int* r_done;
-    int* b_done;
+    volatile int* r_done;
+    volatile int* b_done;
 
     float *buffer; 
 }

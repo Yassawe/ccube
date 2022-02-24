@@ -6,7 +6,7 @@
 #define BLOCK_SIZE 512
 
 
-void allocate_lock(int* pointer, int num_blocks){
+void allocate_lock(volatile int* pointer, int num_blocks){
     cudaMalloc((void **)&pointer, size*sizeof(int));
     cudaMemset(pointer, 0, size*sizeof(int));
 }
@@ -90,19 +90,41 @@ void killCommunicator(struct Node* tree, int p){
 
 
 void allreduce(struct Node* tree, int rank, int num_chunks){
+
     cudaSetDevice(rank);
     int parent = *tree[rank].parent;
     int left = *tree[rank].left;
     int right = *tree[rank].right;
-    
+
     reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(parent,
                                                                         left,
                                                                         right,
-                                                                        *tree[rank].bu);
+                                                                        *tree[rank].buffer,
+                                                                        (left == -1) ? NULL : *tree[left].buffer,
+                                                                        (right == -1) ? NULL : *tree[right].buffer,
+                                                                        *tree[rank].r_lock,
+                                                                        (parent == -1) ? NULL : *tree[parent].r_lock,
+                                                                        *tree[rank].r_done,
+                                                                        (left == -1) ? NULL : *tree[left].r_done,
+                                                                        (right == -1) ? NULL : *tree[right].r_done,
+                                                                        (left == -1) ? NULL : *tree[left].b_lock,
+                                                                        (right == -1) ? NULL : *tree[right].b_lock,
+                                                                        num_chunks);
+
+    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(parent,
+                                                                           left,
+                                                                           right,
+                                                                           *tree[rank].buffer,
+                                                                           (parent == -1) ? NULL : *tree[parent].buffer,
+                                                                           *tree[rank].b_lock,
+                                                                           (left == -1) ? NULL : *tree[left].b_lock,
+                                                                           (right == -1) ? NULL : *tree[right].b_lock,
+                                                                           *tree[rank].b_done,
+                                                                           (parent == -1) ? NULL : *tree[parent].b_done,
+                                                                           num_chunks
+                                                                           );
 
 }
-
-
 
 __global__ void reduce_kernel(int parent,
                               int left,
@@ -111,15 +133,15 @@ __global__ void reduce_kernel(int parent,
                               float* left_buff, 
                               float* right_buff, 
                               volatile int* r_lock_self, 
-                              int* r_lock_parent,
+                              volatile int* r_lock_parent,
                               volatile int* r_done_self,
-                              int* r_done_left,
-                              int* r_done_right,
-                              int* b_lock_left,
-                              int* b_lock_right,
+                              volatile int* r_done_left,
+                              volatile int* r_done_right,
+                              volatile int* b_lock_left,
+                              volatile int* b_lock_right,
                               int num_chunks)
 {
-    // grid size = number of elements in a chunk(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE
+    // grid size = number of elements in a chunk
     int gid = blockIdx.x*blockDim.x + threadIdx.x;
     int tid = threadIdx.x;
     int gsize = gridDim.x*blockDim.x; 
@@ -217,10 +239,10 @@ __global__ void broadcast_kernel(int parent,
                                  float* self_buff,
                                  float* parent_buff,
                                  volatile int* b_lock_self,
-                                 int* b_lock_left,
-                                 int* b_lock_right,
-                                 int* b_done_self,
-                                 int* b_done_parent,
+                                 volatile int* b_lock_left,
+                                 volatile int* b_lock_right,
+                                 volatile int* b_done_self,
+                                 volatile int* b_done_parent,
                                  int num_chunks)
 {
     // grid size = num of elements in a chunk

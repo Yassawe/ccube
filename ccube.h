@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
+#include <cuda_runtime_api.h>
 
 struct Node {
     cudaStream_t R_stream; 
@@ -17,7 +18,7 @@ struct Node {
     volatile int* b_done;
 
     float *buffer; 
-}
+};
 
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree, int p);

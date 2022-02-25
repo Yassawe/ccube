@@ -7,7 +7,6 @@ int main(){
     // create n threads, each calling allreduce() on its device
     struct Node tree[4];
 
-    createCommunicator(&tree);
-
-
+    createCommunicator(tree);
+    
 }

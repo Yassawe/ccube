@@ -161,6 +161,7 @@ __global__ void reduce_kernel(int parent,
                     r_lock_self[blockIdx.x] = 0;
                     r_lock_parent[blockIdx.x] = 1;
                 }   
+                __syncthreads(); //maybe unnecessary
             }
             if(tid==0){
                 r_done_left[blockIdx.x] = 1;
@@ -178,6 +179,7 @@ __global__ void reduce_kernel(int parent,
                     r_lock_self[blockIdx.x] = 0;
                     r_lock_parent[blockIdx.x] = 1;
                 }
+                __syncthreads(); //maybe unnecessary
             }
             if (tid ==0){
                 r_done_left[blockIdx.x] = 1;
@@ -206,6 +208,7 @@ __global__ void reduce_kernel(int parent,
                     b_lock_left[blockIdx.x] = 1;
                     b_lock_right[blockIdx.x] = 1;
                 } 
+                __syncthreads(); //maybe unnecessary
             }
             if(tid==0){
                 r_done_left[blockIdx.x] = 1;
@@ -224,6 +227,7 @@ __global__ void reduce_kernel(int parent,
                     r_lock_self[blockIdx.x] = 0;
                     b_lock_left[blockIdx.x] = 1;
                 }
+                __syncthreads(); //maybe unnecessary
             }
             if (tid ==0){
                 r_done_left[blockIdx.x] = 1;
@@ -265,6 +269,7 @@ __global__ void broadcast_kernel(int parent,
                     b_lock_left[blockIdx.x] = 1;
                     b_lock_right[blockIdx.x] = 1;
                 }
+                __syncthreads(); //maybe unnecessary
             }
             if (tid==0){
                 b_done_parent[blockIdx.x] = 1;
@@ -281,6 +286,7 @@ __global__ void broadcast_kernel(int parent,
                     b_lock_self[blockIdx.x] = 0;
                     b_lock_left[blockIdx.x] = 1;
                 }
+                __syncthreads(); //maybe unnecessary
             }
             if (tid==0){
                 b_done_parent[blockIdx.x] = 1;
@@ -296,6 +302,7 @@ __global__ void broadcast_kernel(int parent,
                 if (tid==0){
                     b_lock_self[blockIdx.x] = 0;
                 }
+                __syncthreads(); //maybe unnecessary
             }
             if (tid==0){
                 b_done_parent[blockIdx.x] = 1;

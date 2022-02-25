@@ -121,8 +121,7 @@ void allreduce(struct Node* tree, int rank, int num_chunks){
                                                                            (right == -1) ? NULL : *tree[right].b_lock,
                                                                            *tree[rank].b_done,
                                                                            (parent == -1) ? NULL : *tree[parent].b_done,
-                                                                           num_chunks
-                                                                           );
+                                                                           num_chunks);
 
 }
 

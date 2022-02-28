@@ -82,7 +82,7 @@ void killCommunicator(struct Node* tree){
         cudaFree(tree[i].r_done);
         cudaFree(tree[i].b_done);
     }
-    delete tree;
+    free(tree);
 }
 
 

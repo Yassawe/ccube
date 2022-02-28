@@ -26,64 +26,64 @@ void createCommunicator(struct Node* tree){
 
     cudaSetDevice(0);
     cudaDeviceEnablePeerAccess(2,0);
-    cudaStreamCreateWithFlags(&(tree[0]->R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[0]->B_stream), cudaStreamNonBlocking);
-    tree[0]->left = 2;
-    tree[0]->right = -1;
-    tree[0]->parent  = -1;
-    allocate_lock(tree[0]->r_lock, num_blocks);
-    allocate_lock(tree[0]->b_lock, num_blocks);
-    allocate_lock(tree[0]->r_done, num_blocks);
-    allocate_lock(tree[0]->b_done, num_blocks);
+    cudaStreamCreateWithFlags(&(tree[0].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[0].B_stream), cudaStreamNonBlocking);
+    tree[0].left = 2;
+    tree[0].right = -1;
+    tree[0].parent  = -1;
+    allocate_lock(tree[0].r_lock, num_blocks);
+    allocate_lock(tree[0].b_lock, num_blocks);
+    allocate_lock(tree[0].r_done, num_blocks);
+    allocate_lock(tree[0].b_done, num_blocks);
 
 
     cudaSetDevice(1);
     cudaDeviceEnablePeerAccess(2,0);
-    cudaStreamCreateWithFlags(&(tree[1]->R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[1]->B_stream), cudaStreamNonBlocking);
-    tree[1]->left = -1;
-    tree[1]->right = -1;
-    tree[1]->parent = 2;
-    allocate_lock(tree[1]->r_lock, num_blocks);
-    allocate_lock(tree[1]->b_lock, num_blocks);
-    allocate_lock(tree[1]->r_done, num_blocks);
-    allocate_lock(tree[1]->b_done, num_blocks);
+    cudaStreamCreateWithFlags(&(tree[1].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[1].B_stream), cudaStreamNonBlocking);
+    tree[1].left = -1;
+    tree[1].right = -1;
+    tree[1].parent = 2;
+    allocate_lock(tree[1].r_lock, num_blocks);
+    allocate_lock(tree[1].b_lock, num_blocks);
+    allocate_lock(tree[1].r_done, num_blocks);
+    allocate_lock(tree[1].b_done, num_blocks);
 
 
     cudaSetDevice(2);
     cudaDeviceEnablePeerAccess(1,0);
     cudaDeviceEnablePeerAccess(3,0);
-    cudaStreamCreateWithFlags(&(tree[2]->R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[2]->B_stream), cudaStreamNonBlocking);
-    tree[2]->left = 1;
-    tree[2]->right = 3;
-    tree[2]->parent = 0;
-    allocate_lock(tree[2]->r_lock, num_blocks);
-    allocate_lock(tree[2]->b_lock, num_blocks);
-    allocate_lock(tree[2]->r_done, num_blocks);
-    allocate_lock(tree[2]->b_done, num_blocks);
+    cudaStreamCreateWithFlags(&(tree[2].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[2].B_stream), cudaStreamNonBlocking);
+    tree[2].left = 1;
+    tree[2].right = 3;
+    tree[2].parent = 0;
+    allocate_lock(tree[2].r_lock, num_blocks);
+    allocate_lock(tree[2].b_lock, num_blocks);
+    allocate_lock(tree[2].r_done, num_blocks);
+    allocate_lock(tree[2].b_done, num_blocks);
 
     
     cudaSetDevice(3);
     cudaDeviceEnablePeerAccess(2,0);
-    cudaStreamCreateWithFlags(&(tree[3]->R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[3]->B_stream), cudaStreamNonBlocking);
-    tree[3]->left = -1;
-    tree[3]->right = -1;
-    tree[3]->parent = 2;
-    allocate_lock(tree[3]->r_lock, num_blocks);
-    allocate_lock(tree[3]->b_lock, num_blocks);
-    allocate_lock(tree[3]->r_done, num_blocks);
-    allocate_lock(tree[3]->b_done, num_blocks);
+    cudaStreamCreateWithFlags(&(tree[3].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[3].B_stream), cudaStreamNonBlocking);
+    tree[3].left = -1;
+    tree[3].right = -1;
+    tree[3].parent = 2;
+    allocate_lock(tree[3].r_lock, num_blocks);
+    allocate_lock(tree[3].b_lock, num_blocks);
+    allocate_lock(tree[3].r_done, num_blocks);
+    allocate_lock(tree[3].b_done, num_blocks);
 }
 
 void killCommunicator(struct Node* tree, int p){
     for(int i=0; i<p; i++){
         cudaSetDevice(i);
-        cudaFree(tree[i]->r_lock);
-        cudaFree(tree[i]->b_lock);
-        cudaFree(tree[i]->r_done);
-        cudaFree(tree[i]->b_done);
+        cudaFree(tree[i].r_lock);
+        cudaFree(tree[i].b_lock);
+        cudaFree(tree[i].r_done);
+        cudaFree(tree[i].b_done);
     }
     delete tree;
 }
@@ -92,35 +92,35 @@ void killCommunicator(struct Node* tree, int p){
 void allreduce(struct Node* tree, int rank, int num_chunks){
 
     cudaSetDevice(rank);
-    int parent = *tree[rank].parent;
-    int left = *tree[rank].left;
-    int right = *tree[rank].right;
+    int parent = tree[rank].parent;
+    int left = tree[rank].left;
+    int right = tree[rank].right;
 
-    reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(parent,
+    reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                         left,
                                                                         right,
-                                                                        *tree[rank].buffer,
-                                                                        (left == -1) ? NULL : *tree[left].buffer,
-                                                                        (right == -1) ? NULL : *tree[right].buffer,
-                                                                        *tree[rank].r_lock,
-                                                                        (parent == -1) ? NULL : *tree[parent].r_lock,
-                                                                        *tree[rank].r_done,
-                                                                        (left == -1) ? NULL : *tree[left].r_done,
-                                                                        (right == -1) ? NULL : *tree[right].r_done,
-                                                                        (left == -1) ? NULL : *tree[left].b_lock,
-                                                                        (right == -1) ? NULL : *tree[right].b_lock,
+                                                                        tree[rank].buffer,
+                                                                        (left == -1) ? NULL : tree[left].buffer,
+                                                                        (right == -1) ? NULL : tree[right].buffer,
+                                                                        tree[rank].r_lock,
+                                                                        (parent == -1) ? NULL : tree[parent].r_lock,
+                                                                        tree[rank].r_done,
+                                                                        (left == -1) ? NULL : tree[left].r_done,
+                                                                        (right == -1) ? NULL : tree[right].r_done,
+                                                                        (left == -1) ? NULL : tree[left].b_lock,
+                                                                        (right == -1) ? NULL : tree[right].b_lock,
                                                                         num_chunks);
 
-    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE>>>(parent,
+    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
                                                                            left,
                                                                            right,
-                                                                           *tree[rank].buffer,
-                                                                           (parent == -1) ? NULL : *tree[parent].buffer,
-                                                                           *tree[rank].b_lock,
-                                                                           (left == -1) ? NULL : *tree[left].b_lock,
-                                                                           (right == -1) ? NULL : *tree[right].b_lock,
-                                                                           *tree[rank].b_done,
-                                                                           (parent == -1) ? NULL : *tree[parent].b_done,
+                                                                           tree[rank].buffer,
+                                                                           (parent == -1) ? NULL : tree[parent].buffer,
+                                                                           tree[rank].b_lock,
+                                                                           (left == -1) ? NULL : tree[left].b_lock,
+                                                                           (right == -1) ? NULL : tree[right].b_lock,
+                                                                           tree[rank].b_done,
+                                                                           (parent == -1) ? NULL : tree[parent].b_done,
                                                                            num_chunks);
 
 }

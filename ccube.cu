@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda.h>
-
-#define CHUNK_SIZE 2048 //in float32 elements. hardcoded for now.
-#define BLOCK_SIZE 512
-
+#include "ccube.h"
 
 void allocate_lock(volatile int* pointer, int num_blocks){
     cudaMalloc((void **)&pointer, size*sizeof(int));
@@ -89,9 +86,9 @@ void killCommunicator(struct Node* tree, int p){
 }
 
 
-void allreduce(struct Node* tree, int rank, int num_chunks){
+void allreduce(struct t_args* args){
 
-    cudaSetDevice(rank);
+    cudaSetDevice(args->rank);
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
@@ -122,6 +119,8 @@ void allreduce(struct Node* tree, int rank, int num_chunks){
                                                                            tree[rank].b_done,
                                                                            (parent == -1) ? NULL : tree[parent].b_done,
                                                                            num_chunks);
+
+    cudaDeviceSynchronize();
 
 }
 

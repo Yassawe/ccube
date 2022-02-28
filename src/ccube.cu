@@ -74,8 +74,8 @@ void createCommunicator(struct Node* tree){
     allocate_lock(tree[3].b_done, num_blocks);
 }
 
-void killCommunicator(struct Node* tree, int p){
-    for(int i=0; i<p; i++){
+void killCommunicator(struct Node* tree){
+    for(int i=0; i<P; i++){
         cudaSetDevice(i);
         cudaFree(tree[i].r_lock);
         cudaFree(tree[i].b_lock);

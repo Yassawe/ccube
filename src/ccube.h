@@ -32,5 +32,5 @@ struct t_args{
 };
 
 void createCommunicator(struct Node* tree);
-void killCommunicator(struct Node* tree, int p);
+void killCommunicator(struct Node* tree);
 void* allreduce(void* ptr);

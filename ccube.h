@@ -33,4 +33,4 @@ struct t_args{
 
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree, int p);
-void allreduce(struct t_args* args);
+void* allreduce(void* ptr);

@@ -86,13 +86,18 @@ void killCommunicator(struct Node* tree, int p){
 }
 
 
-void allreduce(struct t_args* args){
+void* allreduce(void* ptr){
 
-    cudaSetDevice(args->rank);
+    struct t_args* args = (struct t_args*)ptr;
+    
+    int rank = args->rank;
+    struct Node* tree = args->tree;
+
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
 
+    cudaSetDevice(rank);
     reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                         left,
                                                                         right,

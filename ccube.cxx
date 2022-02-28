@@ -10,14 +10,23 @@ int main(){
     struct Node tree[P];
     int num_chunks;
 
-    createCommunicator(tree);
 
     pthread_t thr[P];
 
+    struct t_args args;
+
+    args.tree = tree;
+
+    createCommunicator(tree);
+
+
     for(int i = 0; i<P; i++){
-        struct t_args args = {tree, i, num_chunks}; 
-        pthread_create(&thr[i], NULL, allreduce, args);
+        args.rank = i;
+        args.num_chunks=num_chunks;   
+        pthread_create(&thr[i], NULL, allreduce, (void *)&args);
     }
-    //????????????????????????????
-    
+
+    for(int i =0; i<P; i++){
+        pthread_join(thr[i], NULL);
+    }
 }

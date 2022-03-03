@@ -1,11 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <cuda.h>
 #include "ccube.h"
+#include <cuda.h>
 
 void allocate_lock(volatile int* pointer, int num_blocks){
     cudaMalloc((void **)&pointer, num_blocks*sizeof(int));
-    cudaMemset(pointer, 0, num_blocks*sizeof(int));
+    cudaMemset((void *)pointer, 0, num_blocks*sizeof(int));
 }
 
 void createCommunicator(struct Node* tree){
@@ -77,10 +75,10 @@ void createCommunicator(struct Node* tree){
 void killCommunicator(struct Node* tree){
     for(int i=0; i<P; i++){
         cudaSetDevice(i);
-        cudaFree(tree[i].r_lock);
-        cudaFree(tree[i].b_lock);
-        cudaFree(tree[i].r_done);
-        cudaFree(tree[i].b_done);
+        cudaFree((void *)tree[i].r_lock);
+        cudaFree((void *)tree[i].b_lock);
+        cudaFree((void *)tree[i].r_done);
+        cudaFree((void *)tree[i].b_done);
     }
     free(tree);
 }
@@ -319,5 +317,5 @@ void* allreduce(void* ptr){
                                                                            num_chunks);
 
     cudaDeviceSynchronize();
-
+    // has to return void pointer
 }

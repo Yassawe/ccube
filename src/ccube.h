@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cuda_runtime_api.h>
+#include "pthread.h"
 
 #define P 4
 #define CHUNK_SIZE 2048 //in float32 elements. hardcoded for now.
@@ -33,4 +34,4 @@ struct t_args{
 
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
-void* allreduce(void* ptr);
+void *allreduce(void* ptr);

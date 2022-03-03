@@ -12,7 +12,7 @@ CUDA_LIB_DIR= -L$(CUDA_PATH)/lib64
 CUDA_INC_DIR= -I$(CUDA_PATH)/include
 CUDA_LINK_LIBS= -lcudart
 
-EXE = ccube
+EXE = bin/ccube
 
 # Link C and CUDA compiled object files to target executable:
 

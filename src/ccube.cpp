@@ -1,6 +1,4 @@
 #include "ccube.h"
-#include "pthread.h"
-
 
 int main(){
     struct Node tree[P];

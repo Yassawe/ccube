@@ -2,7 +2,7 @@
 
 CUDA_ROOT_DIR=/usr/local/cuda
 
-CC=gcc
+CC=g++
 CC_FLAGS=
 CC_LIBS=
 
@@ -27,11 +27,11 @@ $(EXE) : $(OBJS)
 	$(CC) $(CC_FLAGS) $(OBJS) -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LINK_LIBS)
 
 # Compile main .cpp file to object files:
-$(OBJ_DIR)/%.o : %.cxx
+$(OBJ_DIR)/%.o : %.c
 	$(CC) $(CC_FLAGS) -c $< -o $@
 
 # Compile C++ source files to object files:
-$(OBJ_DIR)/%.o : $(SRC_DIR)/%.cxx $(SRC_DIR)/%.h
+$(OBJ_DIR)/%.o : $(SRC_DIR)/%.c $(SRC_DIR)/%.h
 	$(CC) $(CC_FLAGS) -c $< -o $@
 
 # Compile CUDA source files to object files:

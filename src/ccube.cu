@@ -85,50 +85,6 @@ void killCommunicator(struct Node* tree){
     free(tree);
 }
 
-
-void* allreduce(void* ptr){
-
-    struct t_args* args = (struct t_args*)ptr;
-    
-    int rank = args->rank;
-    struct Node* tree = args->tree;
-
-    int parent = tree[rank].parent;
-    int left = tree[rank].left;
-    int right = tree[rank].right;
-
-    cudaSetDevice(rank);
-    reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
-                                                                        left,
-                                                                        right,
-                                                                        tree[rank].buffer,
-                                                                        (left == -1) ? NULL : tree[left].buffer,
-                                                                        (right == -1) ? NULL : tree[right].buffer,
-                                                                        tree[rank].r_lock,
-                                                                        (parent == -1) ? NULL : tree[parent].r_lock,
-                                                                        tree[rank].r_done,
-                                                                        (left == -1) ? NULL : tree[left].r_done,
-                                                                        (right == -1) ? NULL : tree[right].r_done,
-                                                                        (left == -1) ? NULL : tree[left].b_lock,
-                                                                        (right == -1) ? NULL : tree[right].b_lock,
-                                                                        num_chunks);
-
-    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
-                                                                           left,
-                                                                           right,
-                                                                           tree[rank].buffer,
-                                                                           (parent == -1) ? NULL : tree[parent].buffer,
-                                                                           tree[rank].b_lock,
-                                                                           (left == -1) ? NULL : tree[left].b_lock,
-                                                                           (right == -1) ? NULL : tree[right].b_lock,
-                                                                           tree[rank].b_done,
-                                                                           (parent == -1) ? NULL : tree[parent].b_done,
-                                                                           num_chunks);
-
-    cudaDeviceSynchronize();
-
-}
-
 __global__ void reduce_kernel(int parent,
                               int left,
                               int right,
@@ -178,6 +134,7 @@ __global__ void reduce_kernel(int parent,
                 while(r_lock_self[blockIdx.x] == 0);
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
+
                 if(tid == 0){
                     r_lock_self[blockIdx.x] = 0;
                     r_lock_parent[blockIdx.x] = 1;
@@ -238,7 +195,10 @@ __global__ void reduce_kernel(int parent,
             }
         }
         // if root is a leaf then call the ambulance: 119
+    }  
 }
+
+
 
 __global__ void broadcast_kernel(int parent,
                                  int left,
@@ -316,3 +276,48 @@ __global__ void broadcast_kernel(int parent,
     // root: do nothing
 }
 
+
+void* allreduce(void* ptr){
+
+    struct t_args* args = (struct t_args*)ptr;
+    
+    int rank = args->rank;
+    int num_chunks = args->num_chunks;
+    struct Node* tree = args->tree;
+
+    int parent = tree[rank].parent;
+    int left = tree[rank].left;
+    int right = tree[rank].right;
+
+    cudaSetDevice(rank);
+    
+    reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
+                                                                        left,
+                                                                        right,
+                                                                        tree[rank].buffer,
+                                                                        (left == -1) ? NULL : tree[left].buffer,
+                                                                        (right == -1) ? NULL : tree[right].buffer,
+                                                                        tree[rank].r_lock,
+                                                                        (parent == -1) ? NULL : tree[parent].r_lock,
+                                                                        tree[rank].r_done,
+                                                                        (left == -1) ? NULL : tree[left].r_done,
+                                                                        (right == -1) ? NULL : tree[right].r_done,
+                                                                        (left == -1) ? NULL : tree[left].b_lock,
+                                                                        (right == -1) ? NULL : tree[right].b_lock,
+                                                                        num_chunks);
+
+    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
+                                                                           left,
+                                                                           right,
+                                                                           tree[rank].buffer,
+                                                                           (parent == -1) ? NULL : tree[parent].buffer,
+                                                                           tree[rank].b_lock,
+                                                                           (left == -1) ? NULL : tree[left].b_lock,
+                                                                           (right == -1) ? NULL : tree[right].b_lock,
+                                                                           tree[rank].b_done,
+                                                                           (parent == -1) ? NULL : tree[parent].b_done,
+                                                                           num_chunks);
+
+    cudaDeviceSynchronize();
+
+}

@@ -12,7 +12,7 @@ int main(){
 
     createCommunicator(tree);
     
-    int num_chunks;
+    int num_chunks = 5;//random number for now
     //TODO: create some data and allocate it to buffers on devices to be reduced
 
     for(int i = 0; i<P; i++){

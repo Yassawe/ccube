@@ -4,8 +4,8 @@
 #include "ccube.h"
 
 void allocate_lock(volatile int* pointer, int num_blocks){
-    cudaMalloc((void **)&pointer, size*sizeof(int));
-    cudaMemset(pointer, 0, size*sizeof(int));
+    cudaMalloc((void **)&pointer, num_blocks*sizeof(int));
+    cudaMemset(pointer, 0, num_blocks*sizeof(int));
 }
 
 void createCommunicator(struct Node* tree){

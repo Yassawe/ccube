@@ -43,5 +43,7 @@ int main(int argc, char *argv[]){
     //TODO: create some unit tests to check functional correctness of the code
 
     killCommunicator(tree);
+    free(thr);
+    free(&args);
 }
 

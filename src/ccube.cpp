@@ -1,7 +1,7 @@
 #include "ccube.h"
 
 void* allreduce(void* ptr){
-    
+
     int* ret = (int*)  malloc(sizeof(int));
     struct t_args* args = (struct t_args*)ptr;
     
@@ -18,7 +18,7 @@ void* allreduce(void* ptr){
     pthread_exit(ret);
 }
 
-int main(){
+int main(int argc, char *argv[]){
     struct Node tree[P];
     pthread_t thr[P];
     

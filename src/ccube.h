@@ -34,4 +34,4 @@ struct t_args{
 
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
-void *allreduce(void* ptr);
+int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);

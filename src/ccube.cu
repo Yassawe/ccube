@@ -1,6 +1,18 @@
 #include "ccube.h"
 #include <cuda.h>
 
+#define CUDAERRORCHECK(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+
+
 void allocate_lock(volatile int* pointer, int num_blocks){
     cudaMalloc((void **)&pointer, num_blocks*sizeof(int));
     cudaMemset((void *)pointer, 0, num_blocks*sizeof(int));
@@ -274,48 +286,41 @@ __global__ void broadcast_kernel(int parent,
     // root: do nothing
 }
 
-
-void* allreduce(void* ptr){
-
-    struct t_args* args = (struct t_args*)ptr;
-    
-    int rank = args->rank;
-    int num_chunks = args->num_chunks;
-    struct Node* tree = args->tree;
-
-    int parent = tree[rank].parent;
-    int left = tree[rank].left;
-    int right = tree[rank].right;
+int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks){
 
     cudaSetDevice(rank);
-    
+
     reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
-                                                                        left,
-                                                                        right,
-                                                                        tree[rank].buffer,
-                                                                        (left == -1) ? NULL : tree[left].buffer,
-                                                                        (right == -1) ? NULL : tree[right].buffer,
-                                                                        tree[rank].r_lock,
-                                                                        (parent == -1) ? NULL : tree[parent].r_lock,
-                                                                        tree[rank].r_done,
-                                                                        (left == -1) ? NULL : tree[left].r_done,
-                                                                        (right == -1) ? NULL : tree[right].r_done,
-                                                                        (left == -1) ? NULL : tree[left].b_lock,
-                                                                        (right == -1) ? NULL : tree[right].b_lock,
-                                                                        num_chunks);
+                                                                                                left,
+                                                                                                right,
+                                                                                                tree[rank].buffer,
+                                                                                                (left == -1) ? NULL : tree[left].buffer,
+                                                                                                (right == -1) ? NULL : tree[right].buffer,
+                                                                                                tree[rank].r_lock,
+                                                                                                (parent == -1) ? NULL : tree[parent].r_lock,
+                                                                                                tree[rank].r_done,
+                                                                                                (left == -1) ? NULL : tree[left].r_done,
+                                                                                                (right == -1) ? NULL : tree[right].r_done,
+                                                                                                (left == -1) ? NULL : tree[left].b_lock,
+                                                                                                (right == -1) ? NULL : tree[right].b_lock,
+                                                                                                num_chunks);
+
+    CUDAERRORCHECK(cudaPeekAtLastError());
 
     broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
-                                                                           left,
-                                                                           right,
-                                                                           tree[rank].buffer,
-                                                                           (parent == -1) ? NULL : tree[parent].buffer,
-                                                                           tree[rank].b_lock,
-                                                                           (left == -1) ? NULL : tree[left].b_lock,
-                                                                           (right == -1) ? NULL : tree[right].b_lock,
-                                                                           tree[rank].b_done,
-                                                                           (parent == -1) ? NULL : tree[parent].b_done,
-                                                                           num_chunks);
+                                                                                                    left,
+                                                                                                    right,
+                                                                                                    tree[rank].buffer,
+                                                                                                    (parent == -1) ? NULL : tree[parent].buffer,
+                                                                                                    tree[rank].b_lock,
+                                                                                                    (left == -1) ? NULL : tree[left].b_lock,
+                                                                                                    (right == -1) ? NULL : tree[right].b_lock,
+                                                                                                    tree[rank].b_done,
+                                                                                                    (parent == -1) ? NULL : tree[parent].b_done,
+                                                                                                    num_chunks);
 
+    CUDAERRORCHECK(cudaPeekAtLastError());
     cudaDeviceSynchronize();
-    // has to return void pointer
+    return 0;
 }
+

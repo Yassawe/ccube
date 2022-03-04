@@ -92,7 +92,6 @@ void killCommunicator(struct Node* tree){
         cudaFree((void *)tree[i].r_done);
         cudaFree((void *)tree[i].b_done);
     }
-    free(tree);
 }
 
 __global__ void reduce_kernel(int parent,

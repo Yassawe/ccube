@@ -8,6 +8,7 @@ void allocateMemoryBuffers(struct Node* tree, int message_size){
         cudaSetDevice(i);
         cudaMalloc((void **)&tree[i].buffer, message_size*sizeof(float));
         cudaMemset(tree[i].buffer, 1, message_size*sizeof(float));
+        printf("set. device %d. pointer %p\n", i, (void *)tree[i].buffer);
     }
 }
 
@@ -24,16 +25,17 @@ void test(struct Node* tree, int message_size){
 
     for (int i =0; i<P; i++){
         cudaSetDevice(i);
+        //cudaError_t err = 
         cudaMemcpy(tmp, tree[i].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
-        
-        //host implementation because i'm lazy
-        for (int j=0; j<message_size; j++){
-            if(tmp[j]!=P){
-                printf("error in device %d, index %d. Value is %.2f", i, j, tmp[j]);
-                return;
-            }
-        }
+        printf("check. device %d. pointer %p\n", i, (void *)tree[i].buffer);
+        // for (int j=0; j<message_size; j++){
+        //     if(tmp[j]!=P){
+        //         printf("error in device %d, index %d. Value is %.2f. Error %d\n", i, j, tmp[j], err);
+        //     }
+        // }
     }
 
-    printf("test passed");
+    //printf("test passed\n");
+    free(tmp);
 }
+

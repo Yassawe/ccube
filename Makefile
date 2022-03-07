@@ -16,12 +16,15 @@ EXE = bin/ccube
 
 # Link C and CUDA compiled object files to target executable:
 
-$(EXE) : bin/main.o bin/cuda.o
-	$(CC) $(CC_FLAGS) bin/main.o bin/cuda.o -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LINK_LIBS)
+$(EXE) : bin/main.o bin/memory.o bin/cuda.o
+	$(CC) $(CC_FLAGS) bin/main.o bin/memory.o bin/cuda.o -o $@ $(CUDA_INC_DIR) $(CUDA_LIB_DIR) $(CUDA_LINK_LIBS)
 
 
 # Compile C++ source files to object files:
 bin/main.o : src/ccube.cpp src/ccube.h
+	$(CC) $(CC_FLAGS) $(CUDA_INC_DIR) $(CUDA_LIB_DIR) -c $< -o $@
+
+bin/memory.o : src/memory.cpp src/ccube.h
 	$(CC) $(CC_FLAGS) $(CUDA_INC_DIR) $(CUDA_LIB_DIR) -c $< -o $@
 
 # Compile CUDA source files to object files:

@@ -41,9 +41,9 @@ int main(int argc, char *argv[]){
 
     createCommunicator(tree);
     allocateMemoryBuffers(tree, message_size);
-    
-    
-
+    test(tree, message_size);
+    return 0;
+    //debug
     for(int i = 0; i<P; i++){
         args.rank = i;
         args.num_chunks=num_chunks;   
@@ -53,9 +53,8 @@ int main(int argc, char *argv[]){
     for(int i =0; i<P; i++){
         pthread_join(thr[i], NULL);
     }
-    //TODO: create some unit tests to check functional correctness of the code
 
-    test(tree, message_size);
+    //test(tree, message_size);
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

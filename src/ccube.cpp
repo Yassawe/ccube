@@ -54,6 +54,9 @@ int main(int argc, char *argv[]){
         pthread_join(thr[i], NULL);
     }
     //TODO: create some unit tests to check functional correctness of the code
+
+    test(tree, message_size);
+    freeMemoryBuffers(tree);
     killCommunicator(tree);
 }
 

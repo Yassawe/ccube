@@ -12,7 +12,7 @@ void* allreduce(void* ptr){
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
-
+    
     *ret = launch(tree, rank, parent, left, right, num_chunks);
 
     pthread_exit(ret);
@@ -35,8 +35,8 @@ int main(int argc, char *argv[]){
 
     struct Node tree[P];
     pthread_t thr[P];
-    struct t_args args;
-    args.tree = tree;
+    struct t_args args[P];
+
     int num_chunks = (message_size+CHUNK_SIZE-1)/CHUNK_SIZE;
 
     createCommunicator(tree);
@@ -44,9 +44,10 @@ int main(int argc, char *argv[]){
     
 
     for(int i = 0; i<P; i++){
-        args.rank = i;
-        args.num_chunks=num_chunks;   
-        pthread_create(&thr[i], NULL, allreduce, (void *)&args);
+        args[i].tree = tree;
+        args[i].rank = i;
+        args[i].num_chunks=num_chunks;   
+        pthread_create(&thr[i], NULL, allreduce, (void *)&args[i]);
     }
 
     for(int i =0; i<P; i++){

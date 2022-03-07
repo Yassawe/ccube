@@ -34,4 +34,6 @@ struct t_args{
 
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
+void allocateMemoryBuffers(struct Node* tree, int message_size);
+void freeMemoryBuffers(struct Node* tree);
 int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);

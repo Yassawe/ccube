@@ -19,17 +19,30 @@ void* allreduce(void* ptr){
 }
 
 int main(int argc, char *argv[]){
+    int message_size; //message size in terms of float32 elements
+
+    if(argc==2){
+        message_size = atoi(argv[1]);
+    }
+    else if (argc>2){
+        printf("too many arguments\n");
+        return 1;
+    }
+    else{
+        printf("expected an argument\n");
+        return 1;
+    }
+
     struct Node tree[P];
     pthread_t thr[P];
-    
-    
     struct t_args args;
     args.tree = tree;
+    int num_chunks = (message_size+CHUNK_SIZE-1)/CHUNK_SIZE;
 
     createCommunicator(tree);
+    allocateMemoryBuffers(tree, message_size);
     
-    int num_chunks = 5;//random number for now
-    //TODO: create some data and allocate it to buffers on devices to be reduced
+    
 
     for(int i = 0; i<P; i++){
         args.rank = i;

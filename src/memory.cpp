@@ -31,10 +31,10 @@ void test(struct Node* tree, int message_size){
 
     for (int i =0; i<P; i++){
         cudaSetDevice(i); 
-        cudaMemcpy(tmp, tree[i].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
+        cudaError_t err = cudaMemcpy(tmp, tree[i].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
         for (int j = 0; j<message_size; j++){
             if (tmp[j]!=P){
-                printf("error at device %d, index %d. Value %.2f\n", i, j, tmp[j]);
+                printf("error at device %d, index %d. Value %.2f. Error %d\n", i, j, tmp[j],err);
                 return;
             }
         }

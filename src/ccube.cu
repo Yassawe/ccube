@@ -319,7 +319,7 @@ int launch(struct Node* tree, int rank, int parent, int left, int right, int num
                                                                                                     num_chunks);
 
     CUDAERRORCHECK(cudaPeekAtLastError());
-    cudaDeviceSynchronize();
+    CUDAERRORCHECK(cudaDeviceSynchronize());
     return 0;
 }
 

@@ -17,11 +17,11 @@ struct Node {
     int left;
     int right;
 
-    volatile int* r_lock;
-    volatile int* b_lock;
+    int* r_lock;
+    int* b_lock;
 
-    volatile int* r_done;
-    volatile int* b_done;
+    int* r_done;
+    int* b_done;
 
     float *buffer; 
 };
@@ -36,5 +36,5 @@ void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
 void allocateMemoryBuffers(struct Node* tree, int message_size);
 void freeMemoryBuffers(struct Node* tree);
-void test(struct Node* tree, int message_size);
+void test(struct Node* tree, int rank, int target, int message_size);
 int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);

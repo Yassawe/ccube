@@ -12,7 +12,7 @@ void* allreduce(void* ptr){
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
-    
+
     *ret = launch(tree, rank, parent, left, right, num_chunks);
 
     pthread_exit(ret);
@@ -41,8 +41,7 @@ int main(int argc, char *argv[]){
 
     createCommunicator(tree);
     allocateMemoryBuffers(tree, message_size);
-    
-
+   
     for(int i = 0; i<P; i++){
         args[i].tree = tree;
         args[i].rank = i;
@@ -54,7 +53,7 @@ int main(int argc, char *argv[]){
         pthread_join(thr[i], NULL);
     }
 
-    test(tree, message_size);
+    test(tree, 0, 4, message_size);
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

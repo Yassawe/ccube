@@ -12,7 +12,7 @@ CUDA_LIB_DIR= -L$(CUDA_PATH)/lib64
 CUDA_INC_DIR= -I$(CUDA_PATH)/include
 CUDA_LINK_LIBS= -lcudart
 
-EXE = bin/ccube
+EXE = ccube
 
 # Link C and CUDA compiled object files to target executable:
 
@@ -32,4 +32,4 @@ bin/cuda.o : src/ccube.cu src/ccube.h
 	$(NVCC) $(NVCC_FLAGS) -c $< -o $@ $(NVCC_LIBS)
 
 clean:
-	$(RM) bin/* *.o $(EXE)
+	$(RM) $(EXE) bin/* *.o 

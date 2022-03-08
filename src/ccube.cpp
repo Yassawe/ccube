@@ -41,19 +41,23 @@ int main(int argc, char *argv[]){
 
     createCommunicator(tree);
     allocateMemoryBuffers(tree, message_size);
-   
-    for(int i = 0; i<P; i++){
-        args[i].tree = tree;
-        args[i].rank = i;
-        args[i].num_chunks=num_chunks;   
-        pthread_create(&thr[i], NULL, allreduce, (void *)&args[i]);
-    }
+    
+    //check_p2p();
 
-    for(int i =0; i<P; i++){
-        pthread_join(thr[i], NULL);
-    }
+    testp2p(tree, 0, 2, num_chunks);
 
-    test(tree, 0, 4, message_size);
+    // for(int i = 0; i<P; i++){
+    //     args[i].tree = tree;
+    //     args[i].rank = i;
+    //     args[i].num_chunks=num_chunks;   
+    //     pthread_create(&thr[i], NULL, allreduce, (void *)&args[i]);
+    // }
+
+    // for(int i =0; i<P; i++){
+    //     pthread_join(thr[i], NULL);
+    // }
+
+    test(tree, 0, 2, message_size);
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

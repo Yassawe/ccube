@@ -58,6 +58,7 @@ void createCommunicator(struct Node* tree){
 
 
     cudaSetDevice(2);
+    cudaDeviceEnablePeerAccess(0,0);
     cudaDeviceEnablePeerAccess(1,0);
     cudaDeviceEnablePeerAccess(3,0);
     cudaStreamCreateWithFlags(&(tree[2].R_stream), cudaStreamNonBlocking);
@@ -93,8 +94,13 @@ void killCommunicator(struct Node* tree){
         cudaFree(tree[i].b_done);
         cudaStreamDestroy(tree[i].R_stream);
         cudaStreamDestroy(tree[i].B_stream);
+
+        for (int j = 0; j<P; j++){
+            cudaDeviceDisablePeerAccess(j);
+        }
     }
 }
+
 
 __global__ void reduce_kernel(int parent,
                               int left,
@@ -323,3 +329,25 @@ int launch(struct Node* tree, int rank, int parent, int left, int right, int num
     return 0;
 }
 
+
+//[DEBUG]
+
+__global__ void p2p_sum(float* a, float* b, int num_chunks){
+    int gid = blockIdx.x*blockDim.x + threadIdx.x;
+    int gsize = gridDim.x*blockDim.x;
+
+    int i = 0;
+    int index = 0;
+
+    for (i=0; i<num_chunks; i++){
+        index = gid + i*gsize;
+        a[index] = a[index] + b[index];
+        __syncthreads();
+    }
+}
+
+void testp2p(struct Node* tree,int rank, int peer, int num_chunks){
+    cudaSetDevice(rank);
+    p2p_sum<<<CHUNK_SIZE/BLOCK_SIZE, BLOCK_SIZE>>>(tree[rank].buffer, tree[peer].buffer, num_chunks);
+    CUDAERRORCHECK(cudaDeviceSynchronize());
+}

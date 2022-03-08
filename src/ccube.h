@@ -38,3 +38,6 @@ void allocateMemoryBuffers(struct Node* tree, int message_size);
 void freeMemoryBuffers(struct Node* tree);
 void test(struct Node* tree, int rank, int target, int message_size);
 int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);
+
+void check_p2p();
+void testp2p(struct Node* tree,int rank, int peer, int num_chunks);

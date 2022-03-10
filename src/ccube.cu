@@ -13,7 +13,9 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 
-void allocate_lock(int* pointer){
+void allocate_lock(int* pointer, int rank){
+    cudaSetDevice(rank);
+
     cudaMalloc((void **)&pointer, sizeof(int));
     cudaMemset(pointer, 0, sizeof(int));
 }
@@ -28,6 +30,8 @@ void createCommunicator(struct Node* tree){
             1
             |
             2
+            |
+            3
     */
 
     cudaSetDevice(0);
@@ -35,8 +39,8 @@ void createCommunicator(struct Node* tree){
     cudaStreamCreateWithFlags(&(tree[0].stream), cudaStreamNonBlocking);
     tree[0].child = 1;
     tree[0].parent  = -1;
-    allocate_lock(tree[0].lock);
-    allocate_lock(tree[0].ready);
+    allocate_lock(tree[0].lock, 0);
+    allocate_lock(tree[0].ready, 0);
 
 
     cudaSetDevice(1);
@@ -45,16 +49,25 @@ void createCommunicator(struct Node* tree){
     cudaStreamCreateWithFlags(&(tree[1].stream), cudaStreamNonBlocking);
     tree[1].child = 2;
     tree[1].parent = 0;
-    allocate_lock(tree[1].lock);
-    allocate_lock(tree[1].ready);
+    allocate_lock(tree[1].lock, 1);
+    allocate_lock(tree[1].ready, 1);
 
     cudaSetDevice(2);
     cudaDeviceEnablePeerAccess(1,0);
+    cudaDeviceEnablePeerAccess(3,0);
     cudaStreamCreateWithFlags(&(tree[2].stream), cudaStreamNonBlocking);
-    tree[2].child = -1;
+    tree[2].child = 3;
     tree[2].parent = 1;
-    allocate_lock(tree[2].lock);
-    allocate_lock(tree[2].ready);
+    allocate_lock(tree[2].lock, 2);
+    allocate_lock(tree[2].ready, 2);
+
+    cudaSetDevice(3);
+    cudaDeviceEnablePeerAccess(2,0);
+    cudaStreamCreateWithFlags(&(tree[3].stream), cudaStreamNonBlocking);
+    tree[2].child = -1;
+    tree[2].parent = 2;
+    allocate_lock(tree[3].lock, 3);
+    allocate_lock(tree[3].ready, 3);
 
 }
 

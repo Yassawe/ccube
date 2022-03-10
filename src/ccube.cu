@@ -13,12 +13,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 
-void allocate_lock(int* pointer, int rank){
-    cudaSetDevice(rank);
 
-    cudaMalloc((void **)&pointer, sizeof(int));
-    cudaMemset(pointer, 0, sizeof(int));
-}
 
 void createCommunicator(struct Node* tree){
     /*
@@ -39,8 +34,7 @@ void createCommunicator(struct Node* tree){
     cudaStreamCreateWithFlags(&(tree[0].stream), cudaStreamNonBlocking);
     tree[0].child = 1;
     tree[0].parent  = -1;
-    allocate_lock(tree[0].lock, 0);
-    allocate_lock(tree[0].ready, 0);
+    allocateLocks(tree, 0);
 
 
     cudaSetDevice(1);
@@ -49,8 +43,7 @@ void createCommunicator(struct Node* tree){
     cudaStreamCreateWithFlags(&(tree[1].stream), cudaStreamNonBlocking);
     tree[1].child = 2;
     tree[1].parent = 0;
-    allocate_lock(tree[1].lock, 1);
-    allocate_lock(tree[1].ready, 1);
+    allocateLocks(tree, 1);
 
     cudaSetDevice(2);
     cudaDeviceEnablePeerAccess(1,0);
@@ -58,17 +51,14 @@ void createCommunicator(struct Node* tree){
     cudaStreamCreateWithFlags(&(tree[2].stream), cudaStreamNonBlocking);
     tree[2].child = 3;
     tree[2].parent = 1;
-    allocate_lock(tree[2].lock, 2);
-    allocate_lock(tree[2].ready, 2);
+    allocateLocks(tree, 2);
 
     cudaSetDevice(3);
     cudaDeviceEnablePeerAccess(2,0);
     cudaStreamCreateWithFlags(&(tree[3].stream), cudaStreamNonBlocking);
-    tree[2].child = -1;
-    tree[2].parent = 2;
-    allocate_lock(tree[3].lock, 3);
-    allocate_lock(tree[3].ready, 3);
-
+    tree[3].child = -1;
+    tree[3].parent = 2;
+    allocateLocks(tree, 3);
 }
 
 void killCommunicator(struct Node* tree){
@@ -149,6 +139,7 @@ __global__ void simple_reduce(int parent,
         }    
         
     }
+    
 }
 
 int launch(struct Node* tree, int rank, int num_chunks){
@@ -170,29 +161,4 @@ int launch(struct Node* tree, int rank, int num_chunks){
 
     CUDAERRORCHECK(cudaDeviceSynchronize());
     return 0;
-}
-
-
-//[DEBUG]
-
-__global__ void p2p_sum(float* a, float* b, int num_chunks){
-    int gid = blockIdx.x*blockDim.x + threadIdx.x;
-    int gsize = gridDim.x*blockDim.x;
-
-    int i = 0;
-    int index = 0;
-
-    for (i=0; i<num_chunks; i++){
-        index = gid + i*gsize;
-        a[index] = a[index] + b[index];
-        __syncthreads();
-    }
-}
-
-
-
-void test_sum(struct Node* tree,int rank, int peer, int num_chunks){
-    cudaSetDevice(rank);
-    p2p_sum<<<CHUNK_SIZE/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].stream>>>(tree[rank].buffer, tree[peer].buffer, num_chunks);
-    CUDAERRORCHECK(cudaDeviceSynchronize());
 }

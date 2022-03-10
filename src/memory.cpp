@@ -29,6 +29,19 @@ void freeMemoryBuffers(struct Node* tree){
     }
 }
 
+void allocateLocks(struct Node* tree, int rank){
+    int* tmp = (int *) malloc(sizeof(int));
+    *tmp = 0;
+    
+    cudaSetDevice(rank);
+
+    cudaMalloc((void **)&tree[rank].lock, sizeof(int));
+    cudaMemcpy(tree[rank].lock, tmp, sizeof(int), cudaMemcpyHostToDevice);
+
+    cudaMalloc((void **)&tree[rank].ready, sizeof(int));
+    cudaMemcpy(tree[rank].ready, tmp, sizeof(int), cudaMemcpyHostToDevice);
+}
+
 void test(struct Node* tree, int rank, int target, int message_size){
     float* tmp = (float*)malloc(message_size*sizeof(float));
 

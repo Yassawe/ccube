@@ -15,53 +15,54 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 void createCommunicator(struct Node* tree){
     /*
-    prototype for 4 node DGX-1
+    simple pipeline for debugging.
+    single block for debugging.
     
             0
             |
+            1
+            |
             2
-           / \
-          1   3
+            |
+            3
     */
 
     cudaSetDevice(0);
-    cudaDeviceEnablePeerAccess(2,0);
+    cudaDeviceEnablePeerAccess(1,0);
     cudaStreamCreateWithFlags(&(tree[0].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[0].B_stream), cudaStreamNonBlocking);
-    tree[0].left = 2;
     tree[0].right = -1;
+    tree[0].left = 1;
     tree[0].parent  = -1;
     allocateLocks(tree, 0);
 
 
     cudaSetDevice(1);
     cudaDeviceEnablePeerAccess(2,0);
+    cudaDeviceEnablePeerAccess(0,0);
     cudaStreamCreateWithFlags(&(tree[1].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[1].B_stream), cudaStreamNonBlocking);
-    tree[1].left = -1;
     tree[1].right = -1;
-    tree[1].parent = 2;
+    tree[1].left = 2;
+    tree[1].parent = 0;
     allocateLocks(tree, 1);
 
-
     cudaSetDevice(2);
-    cudaDeviceEnablePeerAccess(0,0);
     cudaDeviceEnablePeerAccess(1,0);
     cudaDeviceEnablePeerAccess(3,0);
     cudaStreamCreateWithFlags(&(tree[2].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[2].B_stream), cudaStreamNonBlocking);
-    tree[2].left = 1;
-    tree[2].right = 3;
-    tree[2].parent = 0;
+    tree[2].right = -1;
+    tree[2].left = 3;
+    tree[2].parent = 1;
     allocateLocks(tree, 2);
 
-    
     cudaSetDevice(3);
     cudaDeviceEnablePeerAccess(2,0);
     cudaStreamCreateWithFlags(&(tree[3].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[3].B_stream), cudaStreamNonBlocking);
-    tree[3].left = -1;
     tree[3].right = -1;
+    tree[3].left = -1;
     tree[3].parent = 2;
     allocateLocks(tree, 3);
 }
@@ -118,7 +119,7 @@ __global__ void reduce_kernel(int parent,
                     r_ready_right[bid]=1;
                 }
 
-                while(r_lock_self[bid] != 2);
+                while(r_lock_self[bid] == 0);
 
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
@@ -128,7 +129,8 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid == 0){
-                    atomicAdd(&r_lock_parent[bid], 1);
+                    //atomicAdd(&r_lock_parent[bid], 1);
+                    r_lock_parent[bid] = 1;
                     r_ready[bid]=0;
                 }    
             }
@@ -140,7 +142,7 @@ __global__ void reduce_kernel(int parent,
 
                 if (tid == 0) r_ready_left[bid]=1;
 
-                while(r_lock_self[bid] != 1);
+                while(r_lock_self[bid] == 0);
 
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
@@ -150,7 +152,8 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid == 0){
-                    atomicAdd(&r_lock_parent[bid], 1);
+                    //atomicAdd(&r_lock_parent[bid], 1);
+                    r_lock_parent[bid] = 1;
                     r_ready[bid]=0;
                 }
             }
@@ -162,7 +165,8 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid==0){
-                    atomicAdd(&r_lock_parent[bid], 1);
+                    //atomicAdd(&r_lock_parent[bid], 1);
+                    r_lock_parent[bid] = 1;
                     r_ready[bid] = 0;
                 }
             }

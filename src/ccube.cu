@@ -110,22 +110,26 @@ __global__ void reduce_kernel(int parent,
         if(left!=-1 && right!=-1){
             // two children
             for(i = 0; i<num_chunks; i++){
+                
                 index = gid + i*gsize;
 
                 if (tid==0){
                     r_ready_left[bid]=1;
                     r_ready_right[bid]=1;
                 }
+
                 while(r_lock_self[bid] == 0);
 
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
-
                 
+                if (tid == 0) r_lock_self[bid]=0;
+                
+                while(r_ready[bid]==0);
 
                 if(tid == 0){
-                    r_lock_self[blockIdx.x] = 0;
-                    r_lock_parent[blockIdx.x] = 1;
+                    r_lock_parent[bid] = 1;
+                    r_ready[bid]=0;
                 }    
             }
         }
@@ -133,21 +137,33 @@ __global__ void reduce_kernel(int parent,
             // one children
             for(i=0; i<num_chunks; i++){
                 index = gid + i*gsize;
-                while(r_lock_self[blockIdx.x] == 0);
+
+                if (tid == 0) r_ready_left[bid]=1;
+
+                while(r_lock_self[bid] == 0);
+
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
 
+                if (tid == 0) r_lock_self[bid]==0;
+
+                while(r_ready[bid]==0);
+
                 if(tid == 0){
-                    r_lock_self[blockIdx.x] = 0;
-                    r_lock_parent[blockIdx.x] = 1;
+                    r_lock_parent[bid] = 1;
+                    r_ready[bid]=0;
                 }
             }
         }
         else{
             //leaf
-            if (tid==0){
-                while(r_done_self[blockIdx.x] == 0){
-                    r_lock_parent[blockIdx.x] = 1;
+            for (i=0; i<num_chunks; i++){
+                
+                while(r_ready[bid]==0);
+
+                if(tid==0){
+                    r_lock_parent[bid]=1;
+                    r_ready[bid] = 0;
                 }
             }
         }
@@ -157,28 +173,35 @@ __global__ void reduce_kernel(int parent,
         if(left!=-1 && right!=-1){
             // two children
             for(i = 0; i<num_chunks; i++){
+                
                 index = gid + i*gsize;
-                while(r_lock_self[blockIdx.x] == 0); 
+
+                if (tid==0){
+                    r_ready_left[bid]=1;
+                    r_ready_right[bid]=1;
+                }
+
+                while(r_lock_self[bid] == 0);
+
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
-                if(tid == 0){
-                    r_lock_self[blockIdx.x] = 0;
-                    b_lock_left[blockIdx.x] = 1;
-                    b_lock_right[blockIdx.x] = 1;
-                } 
+                
+                if (tid == 0) r_lock_self[bid]=0;   
             }
         }
         else if (left!=-1){
             // one child
             for(i=0; i<num_chunks; i++){
                 index = gid + i*gsize;
-                while(r_lock_self[blockIdx.x] == 0);
+
+                if (tid == 0) r_ready_left[bid]=1;
+
+                while(r_lock_self[bid] == 0);
+
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
-                if(tid == 0){
-                    r_lock_self[blockIdx.x] = 0;
-                    b_lock_left[blockIdx.x] = 1;
-                }
+
+                if (tid == 0) r_lock_self[bid]==0;
             }
         }
         // if root is a leaf then call the ambulance: 119
@@ -272,34 +295,32 @@ int launch(struct Node* tree, int rank, int num_chunks){
  
     reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                                                 left,
-                                                                                                right,
-                                                                                                tree[rank].buffer,
-                                                                                                (left == -1) ? NULL : tree[left].buffer,
-                                                                                                (right == -1) ? NULL : tree[right].buffer,
+                                                                                                right, 
                                                                                                 tree[rank].r_lock,
-                                                                                                (parent == -1) ? NULL : tree[parent].r_lock,
-                                                                                                tree[rank].r_done,
-                                                                                                (left == -1) ? NULL : tree[left].r_done,
-                                                                                                (right == -1) ? NULL : tree[right].r_done,
-                                                                                                (left == -1) ? NULL : tree[left].b_lock,
-                                                                                                (right == -1) ? NULL : tree[right].b_lock,
+                                                                                                (parent!=-1) ? tree[parent].r_lock : NULL,
+                                                                                                tree[rank].r_ready,
+                                                                                                (left!=-1) ? tree[left].r_ready : NULL,
+                                                                                                (right!=-1) ? tree[right].r_ready : NULL,
+                                                                                                tree[rank].buffer,
+                                                                                                (left!=-1) ? tree[left].buffer : NULL,
+                                                                                                (right!=-1) ? tree[right].buffer : NULL,
                                                                                                 num_chunks);
 
     
-
-    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
-                                                                                                    left,
-                                                                                                    right,
-                                                                                                    tree[rank].buffer,
-                                                                                                    (parent == -1) ? NULL : tree[parent].buffer,
-                                                                                                    tree[rank].b_lock,
-                                                                                                    (left == -1) ? NULL : tree[left].b_lock,
-                                                                                                    (right == -1) ? NULL : tree[right].b_lock,
-                                                                                                    tree[rank].b_done,
-                                                                                                    (parent == -1) ? NULL : tree[parent].b_done,
-                                                                                                    num_chunks);
+    CUDAERRORCHECK(cudaDeviceSynchronize());
+    // broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
+    //                                                                                                 left,
+    //                                                                                                 right,
+    //                                                                                                 tree[rank].buffer,
+    //                                                                                                 (parent == -1) ? NULL : tree[parent].buffer,
+    //                                                                                                 tree[rank].b_lock,
+    //                                                                                                 (left == -1) ? NULL : tree[left].b_lock,
+    //                                                                                                 (right == -1) ? NULL : tree[right].b_lock,
+    //                                                                                                 tree[rank].b_done,
+    //                                                                                                 (parent == -1) ? NULL : tree[parent].b_done,
+    //                                                                                                 num_chunks);
     
 
-    CUDAERRORCHECK(cudaDeviceSynchronize());
+    
     return 0;
 }

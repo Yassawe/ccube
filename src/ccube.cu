@@ -13,11 +13,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 
-void allocate_lock(int* pointer, int num_blocks){
-    cudaMalloc((void **)&pointer, num_blocks*sizeof(int));
-    cudaMemset(pointer, 0, num_blocks*sizeof(int));
-}
-
 void createCommunicator(struct Node* tree){
     /*
     prototype for 4 node DGX-1
@@ -28,8 +23,6 @@ void createCommunicator(struct Node* tree){
            / \
           1   3
     */
-
-    int num_blocks = (CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE;
 
     cudaSetDevice(0);
     cudaDeviceEnablePeerAccess(2,0);
@@ -108,13 +101,13 @@ __global__ void reduce_kernel(int parent,
                               float* self_buff, 
                               float* left_buff, 
                               float* right_buff, 
-                              int* r_lock_self, 
-                              int* r_lock_parent,
-                              int* r_done_self,
-                              int* r_done_left,
-                              int* r_done_right,
-                              int* b_lock_left,
-                              int* b_lock_right,
+                              volatile int* r_lock_self, 
+                              volatile int* r_lock_parent,
+                              volatile int* r_done_self,
+                              volatile int* r_done_left,
+                              volatile int* r_done_right,
+                              volatile int* b_lock_left,
+                              volatile int* b_lock_right,
                               int num_chunks)
 {
     // grid size = number of elements in a chunk
@@ -222,11 +215,11 @@ __global__ void broadcast_kernel(int parent,
                                  int right,
                                  float* self_buff,
                                  float* parent_buff,
-                                 int* b_lock_self,
-                                 int* b_lock_left,
-                                 int* b_lock_right,
-                                 int* b_done_self,
-                                 int* b_done_parent,
+                                 volatile int* b_lock_self,
+                                 volatile int* b_lock_left,
+                                 volatile int* b_lock_right,
+                                 volatile int* b_done_self,
+                                 volatile int* b_done_parent,
                                  int num_chunks)
 {
     // grid size = num of elements in a chunk
@@ -290,7 +283,6 @@ __global__ void broadcast_kernel(int parent,
             }
         }
     }
-    // root: do nothing
 }
 
 int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks){
@@ -313,41 +305,21 @@ int launch(struct Node* tree, int rank, int parent, int left, int right, int num
                                                                                                 (right == -1) ? NULL : tree[right].b_lock,
                                                                                                 num_chunks);
 
-    CUDAERRORCHECK(cudaDeviceSynchronize());
+    
 
-    // broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
-    //                                                                                                 left,
-    //                                                                                                 right,
-    //                                                                                                 tree[rank].buffer,
-    //                                                                                                 (parent == -1) ? NULL : tree[parent].buffer,
-    //                                                                                                 tree[rank].b_lock,
-    //                                                                                                 (left == -1) ? NULL : tree[left].b_lock,
-    //                                                                                                 (right == -1) ? NULL : tree[right].b_lock,
-    //                                                                                                 tree[rank].b_done,
-    //                                                                                                 (parent == -1) ? NULL : tree[parent].b_done,
-    //                                                                                                 num_chunks);
+    broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
+                                                                                                    left,
+                                                                                                    right,
+                                                                                                    tree[rank].buffer,
+                                                                                                    (parent == -1) ? NULL : tree[parent].buffer,
+                                                                                                    tree[rank].b_lock,
+                                                                                                    (left == -1) ? NULL : tree[left].b_lock,
+                                                                                                    (right == -1) ? NULL : tree[right].b_lock,
+                                                                                                    tree[rank].b_done,
+                                                                                                    (parent == -1) ? NULL : tree[parent].b_done,
+                                                                                                    num_chunks);
+    
+
+    CUDAERRORCHECK(cudaDeviceSynchronize());
     return 0;
-}
-
-
-//[DEBUG]
-
-__global__ void p2p_sum(float* a, float* b, int num_chunks){
-    int gid = blockIdx.x*blockDim.x + threadIdx.x;
-    int gsize = gridDim.x*blockDim.x;
-
-    int i = 0;
-    int index = 0;
-
-    for (i=0; i<num_chunks; i++){
-        index = gid + i*gsize;
-        a[index] = a[index] + b[index];
-        __syncthreads();
-    }
-}
-
-void testp2p(struct Node* tree,int rank, int peer, int num_chunks){
-    cudaSetDevice(rank);
-    p2p_sum<<<CHUNK_SIZE/BLOCK_SIZE, BLOCK_SIZE>>>(tree[rank].buffer, tree[peer].buffer, num_chunks);
-    CUDAERRORCHECK(cudaDeviceSynchronize());
 }

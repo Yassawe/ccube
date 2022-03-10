@@ -6,6 +6,8 @@
 #define P 4
 #define CHUNK_SIZE 2048 //in float32 elements. hardcoded for now.
 #define BLOCK_SIZE 512
+#define NUM_BLOCKS (CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE
+
 // for now i assume that chunk perfectly divides the message, for simplicity
 // in-place operation is assumed for simplicity
 
@@ -38,6 +40,4 @@ void allocateMemoryBuffers(struct Node* tree, int message_size);
 void freeMemoryBuffers(struct Node* tree);
 void test(struct Node* tree, int rank, int target, int message_size);
 int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);
-
-void check_p2p();
-void testp2p(struct Node* tree,int rank, int peer, int num_chunks);
+void allocateLocks(struct Node* tree, int rank);

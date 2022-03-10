@@ -12,9 +12,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-
-
-
 void createCommunicator(struct Node* tree){
     /*
     simple pipeline for debugging.
@@ -83,9 +80,13 @@ __global__ void simple_reduce(int parent,
                               float* child_buffer,
                               int num_chunks){
     
-    int gid = blockIdx.x*blockDim.x + threadIdx.x;
-    int gsize = gridDim.x*blockDim.x;
+    
     int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    
+    int gid = bid*blockDim.x + tid;
+    int gsize = gridDim.x*blockDim.x;
+    
     int i = 0; 
     int index = 0;
     
@@ -93,14 +94,14 @@ __global__ void simple_reduce(int parent,
         //root
         for(i=0; i<num_chunks; i++){
             index = gsize*i + gid;
-            if(tid == 0) *c_ready = 1;
+            if(tid == 0) c_ready[bid] = 1;
                 
-            while(*lock==0);
+            while(lock[bid]==0);
     
             self_buffer[index] = self_buffer[index] + child_buffer[index];
             __syncthreads();
                 
-            if(tid == 0) *lock = 0;
+            if(tid == 0) lock[bid] = 0;
         }
 
     }
@@ -109,10 +110,10 @@ __global__ void simple_reduce(int parent,
         if (child ==-1){
             //leaf
             for(i=0;i<num_chunks; i++){
-                while(*ready==0);
+                while(ready[bid]==0);
                 if (tid==0){
-                    *p_lock = 1;
-                    *ready = 0;
+                    p_lock[bid] = 1;
+                    ready[bid] = 0;
                 }
             }
         }
@@ -120,20 +121,20 @@ __global__ void simple_reduce(int parent,
             //non-leaf
             for(i = 0; i<num_chunks; i++){
                 index = gsize*i + gid;
-                if(tid == 0) *c_ready = 1;
+                if(tid == 0) c_ready[bid] = 1;
                 
-                while(*lock==0);
+                while(lock[bid]==0);
     
                 self_buffer[index] = self_buffer[index] + child_buffer[index];
                 __syncthreads();
                 
-                if(tid == 0) *lock = 0;
+                if(tid == 0) lock[bid] = 0;
                 
-                while(*ready==0);
+                while(ready[bid]==0);
     
                 if(tid == 0){
-                    *p_lock = 1;
-                    *ready = 0;
+                    p_lock[bid] = 1;
+                    ready[bid] = 0;
                 } 
             }
         }    

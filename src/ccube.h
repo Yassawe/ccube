@@ -4,8 +4,8 @@
 #include "pthread.h"
 
 #define P 4
-#define CHUNK_SIZE 1024 //in float32 elements. hardcoded for now.
-#define BLOCK_SIZE 1024
+#define CHUNK_SIZE 2048 //in float32 elements. hardcoded for now.
+#define BLOCK_SIZE 512
 // for now i assume that chunk perfectly divides the message, for simplicity
 // in-place operation is assumed for simplicity
 

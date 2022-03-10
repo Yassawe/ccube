@@ -118,7 +118,7 @@ __global__ void reduce_kernel(int parent,
                     r_ready_right[bid]=1;
                 }
 
-                while(r_lock_self[bid] == 0);
+                while(r_lock_self[bid] != 2);
 
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
@@ -128,7 +128,7 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid == 0){
-                    r_lock_parent[bid] = 1;
+                    atomicAdd(&r_lock_parent[bid], 1);
                     r_ready[bid]=0;
                 }    
             }
@@ -140,7 +140,7 @@ __global__ void reduce_kernel(int parent,
 
                 if (tid == 0) r_ready_left[bid]=1;
 
-                while(r_lock_self[bid] == 0);
+                while(r_lock_self[bid] != 1);
 
                 self_buff[index] = self_buff[index] + left_buff[index];
                 __syncthreads();
@@ -150,7 +150,7 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid == 0){
-                    r_lock_parent[bid] = 1;
+                    atomicAdd(&r_lock_parent[bid], 1);
                     r_ready[bid]=0;
                 }
             }
@@ -162,7 +162,7 @@ __global__ void reduce_kernel(int parent,
                 while(r_ready[bid]==0);
 
                 if(tid==0){
-                    r_lock_parent[bid]=1;
+                    atomicAdd(&r_lock_parent[bid], 1);
                     r_ready[bid] = 0;
                 }
             }

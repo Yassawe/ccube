@@ -22,8 +22,9 @@ struct Node {
     int* r_lock;
     int* b_lock;
 
-    int* r_done;
-    int* b_done;
+    int* r_ready_left;
+    int* r_ready_right;
+    int* b_ready;
 
     float *buffer; 
 };
@@ -37,7 +38,10 @@ struct t_args{
 void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
 void allocateMemoryBuffers(struct Node* tree, int message_size);
-void freeMemoryBuffers(struct Node* tree);
-void test(struct Node* tree, int rank, int target, int message_size);
-int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks);
 void allocateLocks(struct Node* tree, int rank);
+void freeMemoryBuffers(struct Node* tree);
+int launch(struct Node* tree, int rank, int num_chunks);
+
+
+void test(struct Node* tree, int rank, int target, int message_size);
+

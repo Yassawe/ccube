@@ -36,11 +36,14 @@ void allocateLocks(struct Node* tree, int rank){
     cudaMalloc((void **)&tree[rank].b_lock, NUM_BLOCKS*sizeof(int));
     cudaMemcpy(tree[rank].b_lock, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMalloc((void **)&tree[rank].r_done, NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].r_done, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc((void **)&tree[rank].r_ready_left, NUM_BLOCKS*sizeof(int));
+    cudaMemcpy(tree[rank].r_ready_left, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMalloc((void **)&tree[rank].b_done, NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].b_done, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc((void **)&tree[rank].r_ready_right, NUM_BLOCKS*sizeof(int));
+    cudaMemcpy(tree[rank].r_ready_right, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+
+    cudaMalloc((void **)&tree[rank].b_ready, NUM_BLOCKS*sizeof(int));
+    cudaMemcpy(tree[rank].b_ready, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 }
 
 void freeMemoryBuffers(struct Node* tree){

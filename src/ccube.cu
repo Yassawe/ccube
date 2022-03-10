@@ -82,47 +82,51 @@ void killCommunicator(struct Node* tree){
     }
 }
 
-
 __global__ void reduce_kernel(int parent,
                               int left,
-                              int right,
-                              float* self_buff, 
-                              float* left_buff, 
-                              float* right_buff, 
+                              int right, 
                               volatile int* r_lock_self, 
                               volatile int* r_lock_parent,
-                              volatile int* r_done_self,
-                              volatile int* r_done_left,
-                              volatile int* r_done_right,
-                              volatile int* b_lock_left,
-                              volatile int* b_lock_right,
+                              volatile int* r_ready,
+                              volatile int* r_ready_left,
+                              volatile int* r_ready_right,
+                              float* self_buff, 
+                              float* left_buff, 
+                              float* right_buff,
                               int num_chunks)
 {
-    // grid size = number of elements in a chunk
-    int gid = blockIdx.x*blockDim.x + threadIdx.x;
+    
     int tid = threadIdx.x;
-    int gsize = gridDim.x*blockDim.x; 
+    int bid = blockIdx.x;
+    int gid = bid*blockDim.x + tid;
+    int gsize = gridDim.x*blockDim.x;
+
     int i=0;
     int index = 0;
-    //data-independent conditioning, so no branch divergence (?)
+
     if(parent!=-1){
         // not root
+
         if(left!=-1 && right!=-1){
             // two children
             for(i = 0; i<num_chunks; i++){
                 index = gid + i*gsize;
-                while(r_lock_self[blockIdx.x] == 0);
+
+                if (tid==0){
+                    r_ready_left[bid]=1;
+                    r_ready_right[bid]=1;
+                }
+                while(r_lock_self[bid] == 0);
+
                 self_buff[index] = self_buff[index] + left_buff[index] + right_buff[index];
                 __syncthreads();
+
+                
+
                 if(tid == 0){
                     r_lock_self[blockIdx.x] = 0;
                     r_lock_parent[blockIdx.x] = 1;
-                }   
-                __syncthreads(); //maybe unnecessary
-            }
-            if(tid==0){
-                r_done_left[blockIdx.x] = 1;
-                r_done_right[blockIdx.x] = 1;
+                }    
             }
         }
         else if (left!=-1){
@@ -137,10 +141,6 @@ __global__ void reduce_kernel(int parent,
                     r_lock_self[blockIdx.x] = 0;
                     r_lock_parent[blockIdx.x] = 1;
                 }
-                __syncthreads(); //maybe unnecessary
-            }
-            if (tid ==0){
-                r_done_left[blockIdx.x] = 1;
             }
         }
         else{
@@ -166,12 +166,6 @@ __global__ void reduce_kernel(int parent,
                     b_lock_left[blockIdx.x] = 1;
                     b_lock_right[blockIdx.x] = 1;
                 } 
-                __syncthreads(); //maybe unnecessary
-            }
-            if(tid==0){
-                r_done_left[blockIdx.x] = 1;
-                r_done_right[blockIdx.x] = 1;
-                r_done_self[blockIdx.x] = 1;
             }
         }
         else if (left!=-1){
@@ -185,11 +179,6 @@ __global__ void reduce_kernel(int parent,
                     r_lock_self[blockIdx.x] = 0;
                     b_lock_left[blockIdx.x] = 1;
                 }
-                __syncthreads(); //maybe unnecessary
-            }
-            if (tid ==0){
-                r_done_left[blockIdx.x] = 1;
-                r_done_self[blockIdx.x] = 1;
             }
         }
         // if root is a leaf then call the ambulance: 119
@@ -273,10 +262,13 @@ __global__ void broadcast_kernel(int parent,
     }
 }
 
-int launch(struct Node* tree, int rank, int parent, int left, int right, int num_chunks){
+int launch(struct Node* tree, int rank, int num_chunks){
 
     cudaSetDevice(rank);
 
+    int parent = tree[rank].parent;
+    int left = tree[rank].left;
+    int right = tree[rank].right;
  
     reduce_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                                                 left,

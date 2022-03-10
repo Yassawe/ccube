@@ -18,7 +18,20 @@ void* allreduce(void* ptr){
 }
 
 int main(int argc, char *argv[]){
-    int message_size = 1024; //message size in terms of float32 elements
+
+    int message_size; //message size in terms of float32 elements
+
+    if(argc==2){
+        message_size = atoi(argv[1]);
+    }
+    else if (argc>2){
+        printf("too many arguments\n");
+        return 1;
+    }
+    else{
+        printf("expected an argument\n");
+        return 1;
+    }
 
     struct Node tree[P];
     pthread_t thr[P];
@@ -26,12 +39,15 @@ int main(int argc, char *argv[]){
 
     int num_chunks = message_size/CHUNK_SIZE;
 
+    check_p2p();
     createCommunicator(tree);
-    allocateMemoryBuffers(tree, message_size);
-    
-    //check_p2p();
+    check_p2p();
 
-    testp2p(tree, 0, 2, num_chunks);
+    allocateMemoryBuffers(tree, message_size);
+    test(tree, 0, 1, message_size);
+    
+
+    test_sum(tree, 0, 2, num_chunks);
 
     // for(int i = 0; i<P; i++){
     //     args[i].tree = tree;
@@ -44,7 +60,7 @@ int main(int argc, char *argv[]){
     //     pthread_join(thr[i], NULL);
     // }
 
-    test(tree, 0, 2, message_size);
+    
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

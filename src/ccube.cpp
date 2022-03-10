@@ -10,34 +10,21 @@ void* allreduce(void* ptr){
     struct Node* tree = args->tree;
 
     int parent = tree[rank].parent;
-    int left = tree[rank].left;
-    int right = tree[rank].right;
+    int child = tree[rank].child;
 
-    *ret = launch(tree, rank, parent, left, right, num_chunks);
+    *ret = launch(tree, rank, parent, child, num_chunks);
 
     pthread_exit(ret);
 }
 
 int main(int argc, char *argv[]){
-    int message_size; //message size in terms of float32 elements
-
-    if(argc==2){
-        message_size = atoi(argv[1]);
-    }
-    else if (argc>2){
-        printf("too many arguments\n");
-        return 1;
-    }
-    else{
-        printf("expected an argument\n");
-        return 1;
-    }
+    int message_size = 1024; //message size in terms of float32 elements
 
     struct Node tree[P];
     pthread_t thr[P];
     struct t_args args[P];
 
-    int num_chunks = (message_size+CHUNK_SIZE-1)/CHUNK_SIZE;
+    int num_chunks = message_size/CHUNK_SIZE;
 
     createCommunicator(tree);
     allocateMemoryBuffers(tree, message_size);

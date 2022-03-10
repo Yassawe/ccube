@@ -44,27 +44,3 @@ void test(struct Node* tree, int rank, int target, int message_size){
     printf("test passed\n");
     free(tmp);
 }
-
-void check_p2p(){
-    int check;
-
-    cudaSetDevice(0);
-    cudaDeviceCanAccessPeer(&check, 0, 2);
-    printf("device 0->2 status: %d\n", check);
-
-    cudaSetDevice(1);
-    cudaDeviceCanAccessPeer(&check, 1, 2);
-    printf("device 1->2 status: %d\n", check);
-
-    cudaSetDevice(2);
-    cudaDeviceCanAccessPeer(&check, 2, 0);
-    printf("device 2->0 status: %d\n", check);
-    cudaDeviceCanAccessPeer(&check, 2, 1);
-    printf("device 2->1 status: %d\n", check);
-    cudaDeviceCanAccessPeer(&check, 2, 3);
-    printf("device 2->3 status: %d\n", check);
-
-    cudaSetDevice(3);
-    cudaDeviceCanAccessPeer(&check, 3, 2);
-    printf("device 3->2 status: %d\n", check);
-}

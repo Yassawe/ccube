@@ -31,10 +31,8 @@ void createCommunicator(struct Node* tree);
 void killCommunicator(struct Node* tree);
 void allocateMemoryBuffers(struct Node* tree, int message_size);
 void freeMemoryBuffers(struct Node* tree);
+int launch(struct Node* tree, int rank, int num_chunks);
 
+// [DEBUG]
 void test(struct Node* tree, int rank, int target, int message_size);
-
-int launch(struct Node* tree, int rank, int parent, int child, int num_chunks);
-
-void check_p2p();
 void test_sum(struct Node* tree,int rank, int peer, int num_chunks);

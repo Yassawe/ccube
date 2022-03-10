@@ -1,19 +1,15 @@
 #include "ccube.h"
 
 void* allreduce(void* ptr){
-
     int* ret = (int*)  malloc(sizeof(int));
     struct t_args* args = (struct t_args*)ptr;
     
+     struct Node* tree = args->tree;
     int rank = args->rank;
     int num_chunks = args->num_chunks;
-    struct Node* tree = args->tree;
+   
 
-    int parent = tree[rank].parent;
-    int child = tree[rank].child;
-
-    *ret = launch(tree, rank, parent, child, num_chunks);
-
+    *ret = launch(tree, rank, num_chunks);
     pthread_exit(ret);
 }
 
@@ -39,28 +35,24 @@ int main(int argc, char *argv[]){
 
     int num_chunks = message_size/CHUNK_SIZE;
 
-    check_p2p();
+
     createCommunicator(tree);
-    check_p2p();
-
     allocateMemoryBuffers(tree, message_size);
-    test(tree, 0, 1, message_size);
-    
+   
 
-    test_sum(tree, 0, 2, num_chunks);
+    for(int i = 0; i<P; i++){
+        args[i].tree = tree;
+        args[i].rank = i;
+        args[i].num_chunks=num_chunks;   
+        pthread_create(&thr[i], NULL, allreduce, (void *)&args[i]);
+    }
 
-    // for(int i = 0; i<P; i++){
-    //     args[i].tree = tree;
-    //     args[i].rank = i;
-    //     args[i].num_chunks=num_chunks;   
-    //     pthread_create(&thr[i], NULL, allreduce, (void *)&args[i]);
-    // }
+    for(int i =0; i<P; i++){
+        pthread_join(thr[i], NULL);
+    }
 
-    // for(int i =0; i<P; i++){
-    //     pthread_join(thr[i], NULL);
-    // }
+    test(tree, 0, 3, message_size);
 
-    
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

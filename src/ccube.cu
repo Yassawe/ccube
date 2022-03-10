@@ -85,48 +85,77 @@ __global__ void simple_reduce(int parent,
     int tid = threadIdx.x;
     int i = 0; 
     int index = 0;
-
-    if (child!=-1){
-        //non-leaf
-        for(i = 0; i<num_chunks; i++){
+    
+    if (parent ==-1){
+        //root
+        for(i=0; i<num_chunks; i++){
             index = gsize*i + gid;
             if(tid == 0) *c_ready = 1;
-            
+                
             while(*lock==0);
-
+    
             self_buffer[index] = self_buffer[index] + child_buffer[index];
             __syncthreads();
-            
+                
             if(tid == 0) *lock = 0;
-            
-            while(*ready==0);
-
-            if(tid == 0){
-                *p_lock = 1;
-                *ready = 0;
-            } 
-            __syncthreads();
         }
+
     }
     else{
-        //leaf
-        for(i=0;i<num_chunks; i++){
-            while(*ready==0);
-            if (tid==0){
-                *p_lock = 1;
-                *ready = 0;
+        //non-root
+        if (child ==-1){
+            //leaf
+            for(i=0;i<num_chunks; i++){
+                while(*ready==0);
+                if (tid==0){
+                    *p_lock = 1;
+                    *ready = 0;
+                }
             }
         }
+        else{
+            //non-leaf
+            for(i = 0; i<num_chunks; i++){
+                index = gsize*i + gid;
+                if(tid == 0) *c_ready = 1;
+                
+                while(*lock==0);
+    
+                self_buffer[index] = self_buffer[index] + child_buffer[index];
+                __syncthreads();
+                
+                if(tid == 0) *lock = 0;
+                
+                while(*ready==0);
+    
+                if(tid == 0){
+                    *p_lock = 1;
+                    *ready = 0;
+                } 
+            }
+        }    
+        
     }
-
 }
 
-int launch(struct Node* tree, int rank, int parent, int child, int num_chunks){
-
+int launch(struct Node* tree, int rank, int num_chunks){
     cudaSetDevice(rank);
 
- 
-                                                                                             num_chunks);
+    int parent = tree[rank].parent;
+    int child = tree[rank].child;
+
+    simple_reduce<<<CHUNK_SIZE/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].stream>>>(parent,
+                                                                               child,
+                                                                               tree[rank].lock,
+                                                                               (parent==-1) ? NULL : tree[parent].lock,
+                                                                               tree[rank].ready,
+                                                                               (child==-1) ? NULL : tree[child].ready,
+                                                                               tree[rank].buffer,
+                                                                               (child==-1) ? NULL : tree[child].buffer,
+                                                                               num_chunks);
+
+
+    CUDAERRORCHECK(cudaDeviceSynchronize());
     return 0;
 }
 

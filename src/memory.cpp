@@ -13,9 +13,6 @@ void allocateMemoryBuffers(struct Node* tree, int message_size){
     for(int i = 0; i<P; i++){
         cudaSetDevice(i);
         cudaMalloc((void **)&tree[i].buffer, message_size*sizeof(float));
-
-        //printf("SET. DEVICE %d ADDRESS %p\n", i, (void *)tree[i].buffer);
-
         cudaMemcpy(tree[i].buffer, tmp, message_size*sizeof(float), cudaMemcpyHostToDevice);
     }
     free(tmp);
@@ -36,11 +33,8 @@ void allocateLocks(struct Node* tree, int rank){
     cudaMalloc((void **)&tree[rank].b_lock, NUM_BLOCKS*sizeof(int));
     cudaMemcpy(tree[rank].b_lock, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMalloc((void **)&tree[rank].r_ready_left, NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].r_ready_left, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
-
-    cudaMalloc((void **)&tree[rank].r_ready_right, NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].r_ready_right, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc((void **)&tree[rank].r_ready, NUM_BLOCKS*sizeof(int));
+    cudaMemcpy(tree[rank].r_ready, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 
     cudaMalloc((void **)&tree[rank].b_ready, NUM_BLOCKS*sizeof(int));
     cudaMemcpy(tree[rank].b_ready, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
@@ -65,6 +59,6 @@ void test(struct Node* tree, int rank, int target, int message_size){
         }
     }
     
-    printf("test passed\n");
+    printf("device %d, test passed\n", rank);
     free(tmp);
 }

@@ -49,10 +49,12 @@ int main(int argc, char *argv[]){
         pthread_join(thr[i], NULL);
     }
 
-    test(tree, 0, P, message_size);
-    test(tree, 1, P, message_size);
-    test(tree, 2, P, message_size);
-    test(tree, 3, P, message_size);
+    test(tree, 0, 4, message_size);
+    test(tree, 2, 3, message_size);
+
+    test(tree, 1, 1, message_size);
+    
+    test(tree, 3, 1, message_size);
 
     freeMemoryBuffers(tree);
     killCommunicator(tree);

@@ -22,8 +22,7 @@ struct Node {
     int* r_lock;
     int* b_lock;
 
-    int* r_ready_left;
-    int* r_ready_right;
+    int* r_ready;
     int* b_ready;
 
     float *buffer; 

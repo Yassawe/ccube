@@ -71,8 +71,8 @@ void killCommunicator(struct Node* tree){
         cudaSetDevice(i);
         cudaFree(tree[i].r_lock);
         cudaFree(tree[i].b_lock);
-        cudaFree(tree[i].r_done);
-        cudaFree(tree[i].b_done);
+        cudaFree(tree[i].r_ready);
+        cudaFree(tree[i].b_ready);
         cudaStreamDestroy(tree[i].R_stream);
         cudaStreamDestroy(tree[i].B_stream);
 

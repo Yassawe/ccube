@@ -50,15 +50,11 @@ int main(int argc, char *argv[]){
     }
 
     printf("allreduce done\n");
-    test(tree, 0, 4, message_size);
-    test(tree, 2, 3, message_size);
-    test(tree, 1, 1, message_size);
-    test(tree, 3, 1, message_size);
+    test(tree, 0, P, message_size);
+    test(tree, 2, P, message_size);
+    test(tree, 1, P, message_size);
+    test(tree, 3, P, message_size);
 
-    // test(tree, 0, 4, message_size);
-    // test(tree, 1, 3, message_size);
-    // test(tree, 2, 2, message_size);
-    // test(tree, 3, 1, message_size);
 
 
     freeMemoryBuffers(tree);

@@ -1,18 +1,6 @@
 #include "ccube.h"
 #include <cuda.h>
 
-#define CUDAERRORCHECK(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-   if (code != cudaSuccess) 
-   {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      if (abort) exit(code);
-   }
-}
-
-
 void createCommunicator(struct Node* tree){
     /*
     simple pipeline for debugging.
@@ -74,7 +62,6 @@ void killCommunicator(struct Node* tree){
         cudaFree(tree[i].b_ready);
         cudaStreamDestroy(tree[i].R_stream);
         cudaStreamDestroy(tree[i].B_stream);
-
         for (int j = 0; j<P; j++){
             cudaDeviceDisablePeerAccess(j);
         }
@@ -97,16 +84,13 @@ __global__ void reduce_kernel(int parent,
                               float* right_buff,
                               int which, // 0 if self is left, 1 if right
                               int num_chunks)
-{
-    
+{   
     int tid = threadIdx.x;
     int bid = blockIdx.x;
     int gid = bid*blockDim.x + tid;
     int gsize = gridDim.x*blockDim.x;
-
     int i=0;
     int index = 0;
-
     if (parent == -1){
         //root
         if (left == -1 && right == -1){
@@ -116,49 +100,35 @@ __global__ void reduce_kernel(int parent,
         else if(right==-1){
             //one child
             for(i=0;i<num_chunks;i++){
-
                 index = gsize*i+gid;
-                
                 if(tid==0) r_ready_left[bid] = 1;
-                
                 while(r_lock_self[2*bid]==0);
-
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
-
                 if (tid == 0) r_lock_self[2*bid] = 0;
-
                 while(b_ready[2*bid]==0);
-
                 if (tid == 0){
                     b_ready[2*bid] = 0;
                     b_lock_left[bid] = 1;
                 }
-
             }
         }
         else{
             //two children
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
-                
                 if (tid == 0){
                     r_ready_left[bid] = 1;
                     r_ready_right[bid] = 1;
                 }
-                
                 while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
-
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
-
                 if (tid == 0){
                     r_lock_self[2*bid] = 0;
                     r_lock_self[2*bid+1] = 0;
                 }
-
                 while(b_ready[2*bid]==0 || b_ready[2*bid+1]==0);
-
                 if(tid==0){
                     b_ready[2*bid] = 0;
                     b_ready[2*bid+1] = 0;
@@ -173,9 +143,7 @@ __global__ void reduce_kernel(int parent,
         if (left == -1 && right == -1){
             //no children
             for(i=0; i<num_chunks; i++){
-
                 while(r_ready[bid]==0);
-
                 if (tid == 0){
                     r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
@@ -187,16 +155,11 @@ __global__ void reduce_kernel(int parent,
             for(i=0; i<num_chunks; i++){
                 index = gsize*i+gid;
                 if (tid == 0) r_ready_left[bid] = 1;
-
                 while(r_lock_self[2*bid]==0);
-
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
-
                 if (tid == 0) r_lock_self[2*bid] = 0;
-
                 while(r_ready[bid]==0);
-
                 if (tid == 0){
                     r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
@@ -211,19 +174,14 @@ __global__ void reduce_kernel(int parent,
                     r_ready_left[bid] = 1;
                     r_ready_right[bid] = 1;
                 } 
-
                 while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
-
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
-
                 if (tid == 0){
                     r_lock_self[2*bid] = 0;
                     r_lock_self[2*bid+1] = 0;
                 } 
-
                 while(r_ready[bid]==0);
-
                 if (tid == 0){
                     r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
@@ -250,10 +208,8 @@ __global__ void broadcast_kernel(int parent,
     int bid = blockIdx.x;
     int gid = bid*blockDim.x + tid;
     int gsize = gridDim.x*blockDim.x;
-
     int i=0;
     int index = 0;
-
     if (parent==-1){
         //root
         return; //root does nothing
@@ -310,9 +266,7 @@ __global__ void broadcast_kernel(int parent,
 
 
 int launch(struct Node* tree, int rank, int num_chunks){
-
     cudaSetDevice(rank);
-
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
@@ -352,6 +306,6 @@ int launch(struct Node* tree, int rank, int num_chunks){
                                                                         which,
                                                                         num_chunks);
     
-    CUDAERRORCHECK(cudaDeviceSynchronize());
+    cudaDeviceSynchronize();
     return 0;
 }

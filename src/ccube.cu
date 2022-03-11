@@ -274,7 +274,16 @@ int launch(struct Node* tree, int rank, int num_chunks){
     if (parent != -1){
         which = (rank == tree[parent].right) ? 1 : 0;
     }
- 
+
+
+    cudaEvent_t start;
+    cudaEvent_t finish;
+    float time;
+
+    cudaEventCreate(&start);
+    cudaEventCreate(&finish);
+    cudaEventRecord(start, 0);
+
     reduce_kernel<<<NUM_BLOCKS, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                     left,
                                                                     right, 
@@ -306,5 +315,15 @@ int launch(struct Node* tree, int rank, int num_chunks){
                                                                         num_chunks);
     
     cudaDeviceSynchronize();
+
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&time, start, finish);
+    cudaEventDestroy(start);
+    cudaEventDestroy(finish);
+    
+
+    printf("CCube. Device %d. Message size = %d bytes. Elapsed time: %.3fms\n", rank, num_chunks*CHUNK_SIZE*4, time);
+
     return 0;
 }

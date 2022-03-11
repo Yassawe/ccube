@@ -28,7 +28,7 @@ int main(int argc, char *argv[]){
         printf("expected an argument\n");
         return 1;
     }
-
+    
     struct Node tree[P];
     pthread_t thr[P];
     struct t_args args[P];
@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
 
     createCommunicator(tree);
     allocateMemoryBuffers(tree, message_size);
-    
+
     for(int i = 0; i<P; i++){
         args[i].tree = tree;
         args[i].rank = i;
@@ -50,12 +50,11 @@ int main(int argc, char *argv[]){
     }
 
     printf("allreduce done\n");
+
     test(tree, 0, P, message_size);
     test(tree, 2, P, message_size);
     test(tree, 1, P, message_size);
     test(tree, 3, P, message_size);
-
-
 
     freeMemoryBuffers(tree);
     killCommunicator(tree);

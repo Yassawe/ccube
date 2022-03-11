@@ -3,8 +3,7 @@
 
 void createCommunicator(struct Node* tree){
     /*
-    simple pipeline for debugging.
-    single block for debugging.
+    simple tree
     
             0
             |

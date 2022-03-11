@@ -61,7 +61,7 @@ void test(struct Node* tree, int rank, int target, int message_size){
 
     cudaSetDevice(rank); 
     cudaError_t err = cudaMemcpy(tmp, tree[rank].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
-    for (int j = 0; j<message_size; j++){
+    for (int j = 0; j<message_size; j++){//CPU implementation because i'm lazy
         if (tmp[j]!=target){
             printf("error at device %d, index %d. Value %.2f. Error %d\n", rank, j, tmp[j],err);
             return;

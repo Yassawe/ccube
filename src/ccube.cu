@@ -89,9 +89,13 @@ __global__ void reduce_kernel(int parent,
                               volatile int* r_ready,
                               volatile int* r_ready_left,
                               volatile int* r_ready_right,
+                              volatile int* b_lock_left,
+                              volatile int* b_lock_right,
+                              volatile int* b_ready,
                               float* self_buff, 
                               float* left_buff, 
                               float* right_buff,
+                              int which, // 0 if self is left, 1 if right
                               int num_chunks)
 {
     
@@ -112,26 +116,56 @@ __global__ void reduce_kernel(int parent,
         else if(right==-1){
             //one child
             for(i=0;i<num_chunks;i++){
+
                 index = gsize*i+gid;
+                
                 if(tid==0) r_ready_left[bid] = 1;
-                while(r_lock_self[bid]==0);
+                
+                while(r_lock_self[2*bid]==0);
+
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
-                if (tid == 0) r_lock_self[bid] = 0;
+
+                if (tid == 0) r_lock_self[2*bid] = 0;
+
+                while(b_ready[2*bid]==0);
+
+                if (tid == 0){
+                    b_ready[2*bid] = 0;
+                    b_lock_left[bid] = 1;
+                    b_lock_right[bid] = 1;
+                }
+
             }
         }
         else{
             //two children
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
+                
                 if (tid == 0){
                     r_ready_left[bid] = 1;
                     r_ready_right[bid] = 1;
                 }
-                while(r_lock_self[bid]==0);
+                
+                while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
+
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
-                if (tid == 0) r_lock_self[bid] = 0;
+
+                if (tid == 0){
+                    r_lock_self[2*bid] = 0;
+                    r_lock_self[2*bid+1] = 0;
+                }
+
+                while(b_ready[2*bid]==0 || b_ready[2*bid+1]==0);
+
+                if(tid==0){
+                    b_ready[2*bid] = 0;
+                    b_ready[2*bid+1] = 0;
+                    b_lock_left[bid] = 1;
+                    b_lock_right[bid] = 1;
+                }
             }
         }
     }
@@ -140,9 +174,11 @@ __global__ void reduce_kernel(int parent,
         if (left == -1 && right == -1){
             //no children
             for(i=0; i<num_chunks; i++){
+
                 while(r_ready[bid]==0);
+
                 if (tid == 0){
-                    r_lock_parent[bid]+=1;
+                    r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
                 }
             }
@@ -153,17 +189,17 @@ __global__ void reduce_kernel(int parent,
                 index = gsize*i+gid;
                 if (tid == 0) r_ready_left[bid] = 1;
 
-                while(r_lock_self[bid]==0);
+                while(r_lock_self[2*bid]==0);
 
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
 
-                if (tid == 0) r_lock_self[bid] = 0;
+                if (tid == 0) r_lock_self[2*bid] = 0;
 
                 while(r_ready[bid]==0);
 
                 if (tid == 0){
-                    r_lock_parent[bid]+=1;
+                    r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
                 }
             }
@@ -177,22 +213,34 @@ __global__ void reduce_kernel(int parent,
                     r_ready_right[bid] = 1;
                 } 
 
-                while(r_lock_self[bid]==0);
+                while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
 
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
 
-                if (tid == 0) r_lock_self[bid] = 0;
+                if (tid == 0){
+                    r_lock_self[2*bid] = 0;
+                    r_lock_self[2*bid+1] = 0;
+                } 
 
                 while(r_ready[bid]==0);
 
                 if (tid == 0){
-                    r_lock_parent[bid]+=1;
+                    r_lock_parent[2*bid+which]=1;
                     r_ready[bid] = 0;
                 }
             }
         }
     }
+}
+
+__global__ void broadcast_kernel(int parent,
+                                 int left,
+                                 int right,
+
+
+                                    ){
+
 }
 
 
@@ -203,6 +251,11 @@ int launch(struct Node* tree, int rank, int num_chunks){
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
+    int which = 0;
+
+    if (parent != -1){
+        which = (rank == tree[parent].right) ? 1 : 0;
+    }
  
     reduce_kernel<<<NUM_BLOCKS, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                     left,
@@ -212,12 +265,17 @@ int launch(struct Node* tree, int rank, int num_chunks){
                                                                     tree[rank].r_ready,
                                                                     (left!=-1) ? tree[left].r_ready : NULL,
                                                                     (right!=-1) ? tree[right].r_ready : NULL,
+                                                                    (left!=-1) ? tree[left].b_lock : NULL,
+                                                                    (right!=-1) ? tree[right].b_lock : NULL,
+                                                                    tree[rank].b_ready,
                                                                     tree[rank].buffer,
                                                                     (left!=-1) ? tree[left].buffer : NULL,
                                                                     (right!=-1) ? tree[right].buffer : NULL,
+                                                                    which,
                                                                     num_chunks);
 
     CUDAERRORCHECK(cudaDeviceSynchronize());
+
     // broadcast_kernel<<<(CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].B_stream>>>(parent,
     //                                                                                                 left,
     //                                                                                                 right,

@@ -28,7 +28,7 @@ int main(int argc, char *argv[]){
         printf("expected an argument\n");
         return 1;
     }
-    
+
     struct Node tree[P];
     pthread_t thr[P];
     struct t_args args[P];
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]){
         pthread_join(thr[i], NULL);
     }
 
-    printf("allreduce done\n");
+    printf("\nAllReduce done\n");
 
     test(tree, 0, P, message_size);
     test(tree, 2, P, message_size);

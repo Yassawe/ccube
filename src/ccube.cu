@@ -1,7 +1,15 @@
 #include "ccube.h"
 #include <cuda.h>
 
-
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
 
 void createCommunicator(struct Node* tree){
     /*
@@ -281,10 +289,6 @@ int launch(struct Node* tree, int rank, int message_size){
         which = (rank == tree[parent].right) ? 1 : 0;
     }
 
-    printf("\n%d\n", CHUNK_SIZE);
-    printf("%d\n", BLOCK_SIZE);
-    printf("%d\n", NUM_BLOCKS);
-
     cudaEvent_t start;
     cudaEvent_t finish;
     float time;
@@ -323,7 +327,7 @@ int launch(struct Node* tree, int rank, int message_size){
                                                                         which,
                                                                         num_chunks);
     
-    cudaDeviceSynchronize();
+    gpuErrchk(cudaDeviceSynchronize());
 
     cudaEventRecord(finish, 0);
     cudaEventSynchronize(finish);

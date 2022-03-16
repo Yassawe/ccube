@@ -33,8 +33,8 @@ void allocateLocks(struct Node* tree, int rank){
     
     cudaSetDevice(rank);
 
-    cudaMalloc((void **)&tree[rank].r_lock, 2*NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].r_lock, tmp2, 2*NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMalloc((void **)&tree[rank].r_lock, (2*NUM_BLOCKS+1)*sizeof(int));
+    cudaMemcpy(tree[rank].r_lock, tmp2, (2*NUM_BLOCKS+1)*sizeof(int), cudaMemcpyHostToDevice);
 
     cudaMalloc((void **)&tree[rank].r_ready, NUM_BLOCKS*sizeof(int));
     cudaMemcpy(tree[rank].r_ready, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
@@ -43,7 +43,7 @@ void allocateLocks(struct Node* tree, int rank){
     cudaMemcpy(tree[rank].b_lock, tmp, NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
 
     cudaMalloc((void **)&tree[rank].b_ready, NUM_BLOCKS*sizeof(int));
-    cudaMemcpy(tree[rank].b_ready, tmp2, 2*NUM_BLOCKS*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(tree[rank].b_ready, tmp2, (2*NUM_BLOCKS+1)*sizeof(int), cudaMemcpyHostToDevice);
 
     free(tmp);
     free(tmp2);

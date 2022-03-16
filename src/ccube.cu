@@ -1,6 +1,8 @@
 #include "ccube.h"
 #include <cuda.h>
 
+
+
 void createCommunicator(struct Node* tree){
     /*
     simple tree
@@ -264,17 +266,24 @@ __global__ void broadcast_kernel(int parent,
 }
 
 
-int launch(struct Node* tree, int rank, int num_chunks){
+int launch(struct Node* tree, int rank, int message_size){
     cudaSetDevice(rank);
+    
+    int num_chunks = (message_size+CHUNK_SIZE-1)/CHUNK_SIZE;
+
     int parent = tree[rank].parent;
     int left = tree[rank].left;
     int right = tree[rank].right;
     int which = 0;
 
+
     if (parent != -1){
         which = (rank == tree[parent].right) ? 1 : 0;
     }
 
+    printf("\n%d\n", CHUNK_SIZE);
+    printf("%d\n", BLOCK_SIZE);
+    printf("%d\n", NUM_BLOCKS);
 
     cudaEvent_t start;
     cudaEvent_t finish;
@@ -323,7 +332,7 @@ int launch(struct Node* tree, int rank, int num_chunks){
     cudaEventDestroy(finish);
     
 
-    printf("CCube. Device %d. Message size = %d bytes. Elapsed time: %.3fms\n", rank, num_chunks*CHUNK_SIZE*4, time);
+    printf("CCube. Device %d. Message size = %d bytes. Elapsed time: %.3fms\n", rank, message_size*4, time);
 
     return 0;
 }

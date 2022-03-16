@@ -7,7 +7,7 @@ void allocateMemoryBuffers(struct Node* tree, int message_size){
     float* tmp = (float*)malloc(message_size*sizeof(float));
 
     for (int i = 0; i<message_size; i++){
-        tmp[i] = 1;
+        tmp[i] = 12;
     }
 
     for(int i = 0; i<P; i++){

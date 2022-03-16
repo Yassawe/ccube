@@ -49,10 +49,10 @@ int main(int argc, char *argv[]){
 
     printf("\nAllReduce done\n");
 
-    test(tree, 0, P, message_size);
-    test(tree, 2, P, message_size);
-    test(tree, 1, P, message_size);
-    test(tree, 3, P, message_size);
+    test(tree, 0, 12*P, message_size);
+    test(tree, 2, 12*P, message_size);
+    test(tree, 1, 12*P, message_size);
+    test(tree, 3, 12*P, message_size);
 
     freeMemoryBuffers(tree);
     killCommunicator(tree);

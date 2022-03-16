@@ -327,8 +327,9 @@ int launch(struct Node* tree, int rank, int message_size){
                                                                         which,
                                                                         num_chunks);
     
-    gpuErrchk(cudaDeviceSynchronize());
-
+    //gpuErrchk(cudaDeviceSynchronize());
+    
+    cudaDeviceSynchronize();
     cudaEventRecord(finish, 0);
     cudaEventSynchronize(finish);
     cudaEventElapsedTime(&time, start, finish);

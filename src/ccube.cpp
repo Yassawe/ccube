@@ -53,7 +53,7 @@ int main(int argc, char *argv[]){
     test(tree, 2, 12*P, message_size);
     test(tree, 1, 12*P, message_size);
     test(tree, 3, 12*P, message_size);
-
+    
     freeMemoryBuffers(tree);
     killCommunicator(tree);
 }

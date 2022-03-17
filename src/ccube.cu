@@ -227,7 +227,7 @@ __global__ void broadcast_kernel(int parent,
         // non-root
         if(left == -1 && right == -1){
             // no children
-            for(i=0; i<num_chunks; i++){
+            for(i=0; i<num_chunks; i++){ 
                 index = gsize*i + gid;
                 if (tid == 0) b_ready_parent[2*bid+which] = 1;
                 while(b_lock_self[bid]==0);
@@ -296,6 +296,7 @@ int launch(struct Node* tree, int rank, int message_size){
     cudaEventCreate(&start);
     cudaEventCreate(&finish);
     cudaEventRecord(start, 0);
+    
 
     reduce_kernel<<<NUM_BLOCKS, BLOCK_SIZE, 0, tree[rank].R_stream>>>(parent,
                                                                     left,

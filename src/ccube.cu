@@ -143,11 +143,20 @@ __global__ void simple_reduce(int parent,
     
 }
 
-int launch(struct Node* tree, int rank, int num_chunks){
+int launch(struct Node* tree, int rank, int message_size){
     cudaSetDevice(rank);
 
     int parent = tree[rank].parent;
     int child = tree[rank].child;
+    int num_chunks = (message_size+CHUNK_SIZE-1)/CHUNK_SIZE;
+    
+    cudaEvent_t start;
+    cudaEvent_t finish;
+    float time;
+
+    cudaEventCreate(&start);
+    cudaEventCreate(&finish);
+    cudaEventRecord(start, 0);
 
     simple_reduce<<<CHUNK_SIZE/BLOCK_SIZE, BLOCK_SIZE, 0, tree[rank].stream>>>(parent,
                                                                                child,
@@ -161,5 +170,14 @@ int launch(struct Node* tree, int rank, int num_chunks){
 
 
     CUDAERRORCHECK(cudaDeviceSynchronize());
+
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&time, start, finish);
+    cudaEventDestroy(start);
+    cudaEventDestroy(finish);
+
+    printf("Device %d. Message size = %d bytes. Elapsed time: %.3fms\n", rank, message_size*4, time);
+
     return 0;
 }

@@ -7,7 +7,7 @@ void allocateMemoryBuffers(struct Node* tree, int message_size){
     float* tmp = (float*)malloc(message_size*sizeof(float));
 
     for (int i = 0; i<message_size; i++){
-        tmp[i] = 1;
+        tmp[i] = 12;
     }
 
     for(int i = 0; i<P; i++){
@@ -49,14 +49,25 @@ void test(struct Node* tree, int rank, int target, int message_size){
     float* tmp = (float*)malloc(message_size*sizeof(float));
 
     cudaSetDevice(rank); 
-    cudaError_t err = cudaMemcpy(tmp, tree[rank].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmp, tree[rank].buffer, message_size*sizeof(float), cudaMemcpyDeviceToHost);
+
+    int n_errs = 0;
+    int vals = 0;
     for (int j = 0; j<message_size; j++){
         if (tmp[j]!=target){
-            printf("error at device %d, index %d. Value %.2f. Error %d\n", rank, j, tmp[j],err);
-            return;
+            //printf("device %d, index %d. Value %.2f. Error %d\n", rank, j, tmp[j],err);
+            n_errs++;
+            vals+=tmp[j];
         }
     }
     
-    printf("test passed\n");
+    if(n_errs!=0){
+        vals = vals/n_errs;
+    }
+    else{
+        vals = target;
+    }
+
+    printf("device: %d. Errors: %d. Val: %d\n", rank, n_errs, vals);
     free(tmp);
 }

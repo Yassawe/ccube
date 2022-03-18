@@ -84,8 +84,8 @@ __global__ void simple_reduce(int parent,
     int tid = threadIdx.x;
     int bid = blockIdx.x;
     
-    int gid = bid*blockDim.x + tid;
-    int gsize = gridDim.x*blockDim.x;
+    int gid = bid*blockDim.x + tid; //where the thread is in the chunk
+    int gsize = gridDim.x*blockDim.x; //chunk size
     
     int i = 0; 
     int index = 0;

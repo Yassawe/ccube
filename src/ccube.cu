@@ -77,6 +77,23 @@ void killCommunicator(struct Node* tree){
     }
 }
 
+__device__ __inline__ void wait(volatile int* ptr, int tid){
+    //wait one node
+    if (tid == 0) while(atomicCAS((int *)ptr, 1, 1) == 0);
+    __syncthreads();
+}
+
+__device__ __inline__ void wait2c(volatile int* ptr1, volatile int* ptr2, int tid){
+    //wait two nodes
+    if (tid == 0) while(atomicCAS((int *)ptr1, 1, 1) == 0 || atomicCAS((int *)ptr2, 1, 1) == 0);
+    __syncthreads();
+}
+
+__device__ __inline__ void post(volatile int* ptr, int val, int tid){
+    if (tid==0) atomicExch((int *)ptr, val);
+} 
+
+
 __global__ void reduce_kernel(int parent,
                               int left,
                               int right, 
@@ -110,40 +127,39 @@ __global__ void reduce_kernel(int parent,
             //one child
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
-                if(tid==0) r_ready_left[bid] = 1;
-                while(r_lock_self[2*bid]==0);
+
+                post(&r_ready_left[bid], 1, tid);
+
+                wait(&r_lock_self[2*bid], tid);
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
-                if (tid == 0) r_lock_self[2*bid] = 0;
-                while(b_ready[2*bid]==0);
-                if (tid == 0){
-                    b_ready[2*bid] = 0;
-                    b_lock_left[bid] = 1;
-                }
+                post(&r_lock_self[2*bid], 0, tid);
+                
+                wait(&b_ready[2*bid], tid);
+                post(&b_ready[2*bid], 0, tid);
+                post(&b_lock_left[bid], 1, tid);
             }
         }
         else{
             //two children
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
-                if (tid == 0){
-                    r_ready_left[bid] = 1;
-                    r_ready_right[bid] = 1;
-                }
-                while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
+                
+                post(&r_ready_left[bid], 1, tid);
+                post(&r_ready_right[bid], 1, tid);
+
+                wait2c(&r_lock_self[2*bid], &r_lock_self[2*bid+1], tid);
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
-                if (tid == 0){
-                    r_lock_self[2*bid] = 0;
-                    r_lock_self[2*bid+1] = 0;
-                }
-                while(b_ready[2*bid]==0 || b_ready[2*bid+1]==0);
-                if(tid==0){
-                    b_ready[2*bid] = 0;
-                    b_ready[2*bid+1] = 0;
-                    b_lock_left[bid] = 1;
-                    b_lock_right[bid] = 1;
-                }
+
+                post(&r_lock_self[2*bid], 0, tid);
+                post(&r_lock_self[2*bid+1], 0, tid);
+
+                wait2c(&b_ready[2*bid], &b_ready[2*bid+1], tid);
+                post(&b_ready[2*bid], 0, tid);
+                post(&b_ready[2*bid+1], 0, tid);
+                post(&b_lock_left[bid], 1, tid);
+                post(&b_lock_right[bid], 1, tid);
             }
         }
     }
@@ -152,49 +168,45 @@ __global__ void reduce_kernel(int parent,
         if (left == -1 && right == -1){
             //no children
             for(i=0; i<num_chunks; i++){
-                while(r_ready[bid]==0);
-                if (tid == 0){
-                    r_lock_parent[2*bid+which]=1;
-                    r_ready[bid] = 0;
-                }
+                wait(&r_ready[bid], tid);
+                post(&r_lock_parent[2*bid+which], 1, tid);
+                post(&r_ready[bid], 0, tid);
             }
         }
         else if(right==-1){
             //one child
             for(i=0; i<num_chunks; i++){
                 index = gsize*i+gid;
-                if (tid == 0) r_ready_left[bid] = 1;
-                while(r_lock_self[2*bid]==0);
+
+                post(&r_ready_left[bid], 1, tid);
+                
+                wait(&r_lock_self[2*bid], tid);
                 self_buff[index] = self_buff[index]+left_buff[index];
                 __syncthreads();
-                if (tid == 0) r_lock_self[2*bid] = 0;
-                while(r_ready[bid]==0);
-                if (tid == 0){
-                    r_lock_parent[2*bid+which]=1;
-                    r_ready[bid] = 0;
-                }
+                post(&r_lock_self[2*bid], 0, tid);
+
+                wait(&r_ready[bid], tid);
+                post(&r_lock_parent[2*bid+which], 1, tid);
+                post(&r_ready[bid], 0, tid);
             }
         }
         else{
             //two children
             for(i=0; i<num_chunks; i++){
                 index = gsize*i+gid;
-                if (tid == 0){
-                    r_ready_left[bid] = 1;
-                    r_ready_right[bid] = 1;
-                } 
-                while(r_lock_self[2*bid]==0 || r_lock_self[2*bid+1]==0);
+                
+                post(&r_ready_left[bid], 1, tid);
+                post(&r_ready_right[bid], 1, tid);
+
+                wait2c(&r_lock_self[2*bid], &r_lock_self[2*bid+1], tid);
                 self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
                 __syncthreads();
-                if (tid == 0){
-                    r_lock_self[2*bid] = 0;
-                    r_lock_self[2*bid+1] = 0;
-                } 
-                while(r_ready[bid]==0);
-                if (tid == 0){
-                    r_lock_parent[2*bid+which]=1;
-                    r_ready[bid] = 0;
-                }
+                post(&r_lock_self[2*bid], 0, tid);
+                post(&r_lock_self[2*bid+1], 0, tid);
+
+                wait(&r_ready[bid], tid);
+                post(&r_lock_parent[2*bid+which], 1, tid);
+                post(&r_ready[bid], 0, tid);
             }
         }
     }
@@ -229,45 +241,45 @@ __global__ void broadcast_kernel(int parent,
             // no children
             for(i=0; i<num_chunks; i++){ 
                 index = gsize*i + gid;
-                if (tid == 0) b_ready_parent[2*bid+which] = 1;
-                while(b_lock_self[bid]==0);
+                post(&b_ready_parent[2*bid+which], 1, tid);
+                wait(&b_lock_self[bid], tid);
                 self_buff[index] = parent_buff[index];
                 __syncthreads();
-                if (tid == 0) b_lock_self[bid] = 0;
+                post(&b_lock_self[bid], 0, tid);
             }
         }
         else if (right == -1){
             // one child
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
-                if (tid == 0) b_ready_parent[2*bid+which] = 1;
-                while(b_lock_self[bid]==0);
+
+                post(&b_ready_parent[2*bid+which], 1, tid);
+                wait(&b_lock_self[bid], tid);
                 self_buff[index] = parent_buff[index];
                 __syncthreads();
-                if (tid == 0) b_lock_self[bid] = 0;
-                while(b_ready[2*bid]==0);
-                if(tid == 0){
-                    b_ready[2*bid] = 0;
-                    b_lock_left[bid] = 1;
-                }
+                post(&b_lock_self[bid], 0, tid);
+
+                wait(&b_ready[2*bid], tid);
+                post(&b_ready[2*bid], 0, tid);
+                post(&b_lock_left[bid], 1, tid);
             }
         }
         else{
             // two children
             for(i=0;i<num_chunks;i++){
                 index = gsize*i+gid;
-                if (tid == 0) b_ready_parent[2*bid+which] = 1;
-                while(b_lock_self[bid]==0);
+
+                post(&b_ready_parent[2*bid+which], 1, tid);
+                wait(&b_lock_self[bid], tid);
                 self_buff[index] = parent_buff[index];
                 __syncthreads();
-                if (tid == 0) b_lock_self[bid] = 0;
-                while(b_ready[2*bid]==0 || b_ready[2*bid+1]==0);
-                if(tid == 0){
-                    b_ready[2*bid] = 0;
-                    b_ready[2*bid+1] = 0;
-                    b_lock_left[bid] = 1;
-                    b_lock_right[bid] = 1;
-                }
+                post(&b_lock_self[bid], 0, tid);
+
+                wait2c(&b_ready[2*bid], &b_ready[2*bid+1], tid);
+                post(&b_ready[2*bid], 0, tid);
+                post(&b_ready[2*bid+1], 0, tid);
+                post(&b_lock_left[bid], 1, tid);
+                post(&b_lock_right[bid], 1, tid);
             }
         }
     }

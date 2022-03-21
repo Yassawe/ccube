@@ -136,6 +136,7 @@ __global__ void reduce_kernel(int parent,
                 if (tid==0) post(&r_lock_self[2*bid], 0);
                 
                 wait(&b_ready[2*bid], tid);
+                
                 if (tid == 0){
                     post(&b_ready[2*bid], 0);
                     post(&b_lock_left[bid], 1);

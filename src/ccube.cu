@@ -70,6 +70,15 @@ void killCommunicator(struct Node* tree){
     }
 }
 
+__device__ __inline__ void wait(volatile int* ptr, int tid){
+    if (tid == 0) while(atomicCAS((int *)ptr, 1, 1) == 0);
+    __syncthreads();
+}
+
+__device__ __inline__ void post(volatile int* ptr, int val){
+    atomicExch((int *)ptr, val);
+} 
+
 __global__ void simple_reduce(int parent,
                               int child,
                               volatile int* lock,
@@ -84,7 +93,7 @@ __global__ void simple_reduce(int parent,
     int tid = threadIdx.x;
     int bid = blockIdx.x;
     
-    int gid = bid*blockDim.x + tid; //where the thread is in the chunk
+    int gid = bid*blockDim.x + tid; //position of the thread in the chunk
     int gsize = gridDim.x*blockDim.x; //chunk size
     
     int i = 0; 
@@ -94,14 +103,14 @@ __global__ void simple_reduce(int parent,
         //root
         for(i=0; i<num_chunks; i++){
             index = gsize*i + gid;
-            if(tid == 0) c_ready[bid] = 1;
-                
-            while(lock[bid]==0);
-    
+            if(tid == 0) post(&c_ready[bid], 1); 
+
+            wait(&lock[bid], tid);
+
             self_buffer[index] = self_buffer[index] + child_buffer[index];
             __syncthreads();
                 
-            if(tid == 0) lock[bid] = 0;
+            if(tid == 0) post(&lock[bid], 0);
         }
 
     }
@@ -110,10 +119,10 @@ __global__ void simple_reduce(int parent,
         if (child ==-1){
             //leaf
             for(i=0;i<num_chunks; i++){
-                while(ready[bid]==0);
+                wait(&ready[bid], tid);
                 if (tid==0){
-                    p_lock[bid] = 1;
-                    ready[bid] = 0;
+                    post(&p_lock[bid], 1);
+                    post(&ready[bid], 0); 
                 }
             }
         }
@@ -121,20 +130,20 @@ __global__ void simple_reduce(int parent,
             //non-leaf
             for(i = 0; i<num_chunks; i++){
                 index = gsize*i + gid;
-                if(tid == 0) c_ready[bid] = 1;
+                if(tid == 0) post(&c_ready[bid], 1);
                 
-                while(lock[bid]==0);
-    
+                wait(&lock[bid], tid);
+
                 self_buffer[index] = self_buffer[index] + child_buffer[index];
                 __syncthreads();
                 
-                if(tid == 0) lock[bid] = 0;
+                if(tid == 0) post(&lock[bid], 0);
                 
-                while(ready[bid]==0);
-    
+                wait(&ready[bid], tid);
+
                 if(tid == 0){
-                    p_lock[bid] = 1;
-                    ready[bid] = 0;
+                    post(&p_lock[bid], 1);
+                    post(&ready[bid], 0);
                 } 
             }
         }    

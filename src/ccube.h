@@ -4,7 +4,7 @@
 #include "pthread.h"
 
 #define P 4
-#define CHUNK_SIZE (1024*1024) //in float32 elements. hardcoded for now.
+#define CHUNK_SIZE (1024*100) //in float32 elements. hardcoded for now.
 #define BLOCK_SIZE 1024
 #define NUM_BLOCKS ((CHUNK_SIZE+BLOCK_SIZE-1)/BLOCK_SIZE)
 

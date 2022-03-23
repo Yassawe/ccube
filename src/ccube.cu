@@ -136,6 +136,7 @@ __global__ void reduce_kernel(int parent,
                     reset(&b_ready[bid]);
                     increment(&b_lock_left[bid]);
                 }
+     
                 
             }
         }
@@ -161,7 +162,7 @@ __global__ void reduce_kernel(int parent,
                     increment(&b_lock_left[bid]);
                     increment(&b_lock_right[bid]);
                 }
-                
+
             }
         }
     }
@@ -175,6 +176,7 @@ __global__ void reduce_kernel(int parent,
                     reset(&r_ready[bid]);
                     increment(&r_lock_parent[bid]);
                 }
+  
             }
         }
         else if(right==-1){
@@ -193,7 +195,8 @@ __global__ void reduce_kernel(int parent,
                     reset(&r_lock_self[bid]);
                     reset(&r_ready[bid]);
                     increment(&r_lock_parent[bid]);
-                }                
+                }
+               
             }
         }
         else{
@@ -217,6 +220,7 @@ __global__ void reduce_kernel(int parent,
                     reset(&r_ready[bid]);
                     increment(&r_lock_parent[bid]);
                 }
+     
                 
             }
         }
@@ -258,6 +262,7 @@ __global__ void broadcast_kernel(int parent,
                 __syncthreads();
 
                 if(tid==0) reset(&b_lock_self[bid]);
+
             }
         }
         else if (right == -1){
@@ -277,6 +282,7 @@ __global__ void broadcast_kernel(int parent,
                     reset(&b_ready[bid]);
                     increment(&b_lock_left[bid]);
                 }
+
             }
         }
         else{
@@ -297,6 +303,7 @@ __global__ void broadcast_kernel(int parent,
                     increment(&b_lock_left[bid]);
                     increment(&b_lock_right[bid]);
                 }
+
             }
         }
     }

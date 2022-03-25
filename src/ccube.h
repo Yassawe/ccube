@@ -3,7 +3,7 @@
 #include <cuda_runtime_api.h>
 #include "pthread.h"
 
-#define P 4
+#define P 8
 #define CHUNK_SIZE (1048576) //in float32 elements. hardcoded for now.
 #define BLOCK_SIZE 512
 #define NUM_BLOCKS 4

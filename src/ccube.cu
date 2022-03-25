@@ -78,7 +78,7 @@ void killCommunicator(struct Node* tree){
 }
 
 __device__ __inline__ void wait(volatile int* ptr, int val, int tid){
-    if (tid == 0) while(atomicCAS((int *)ptr, val, val) == 0);
+    if (tid == 0) while(atomicCAS((unsigned int *)ptr, val, val) == 0);
     __syncthreads();
 }
 
@@ -110,8 +110,12 @@ __global__ void reduce_kernel(int parent,
     int bid = blockIdx.x;
     int gid = bid*blockDim.x + tid;
     int gsize = gridDim.x*blockDim.x;
+    
     int i=0;
+    int j=0;
+    int chunkStart = 0;
     int index = 0;
+
     if (parent == -1){
         //root
         if (left == -1 && right == -1){
@@ -121,12 +125,16 @@ __global__ void reduce_kernel(int parent,
         else if(right==-1){
             //one child
             for(i=0;i<num_chunks;i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
 
                 if(tid==0) increment(&r_ready_left[bid]);
 
                 wait(&r_lock_self[bid], 1, tid);
-                self_buff[index] = self_buff[index]+left_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = self_buff[index]+left_buff[index];
+                }
                 __syncthreads();
                 
                 wait(&b_ready[bid], 1, tid);
@@ -143,7 +151,7 @@ __global__ void reduce_kernel(int parent,
         else{
             //two children
             for(i=0;i<num_chunks;i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
                 
                 if (tid == 0){
                     increment(&r_ready_left[bid]);
@@ -151,7 +159,12 @@ __global__ void reduce_kernel(int parent,
                 }
                 
                 wait(&r_lock_self[bid], 2, tid);
-                self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
+                }
+
                 __syncthreads();
                 
                 wait(&b_ready[bid], 2, tid);
@@ -182,12 +195,16 @@ __global__ void reduce_kernel(int parent,
         else if(right==-1){
             //one child
             for(i=0; i<num_chunks; i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
 
                 if (tid == 0) increment(&r_ready_left[bid]);
                 
                 wait(&r_lock_self[bid], 1, tid);
-                self_buff[index] = self_buff[index]+left_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = self_buff[index]+left_buff[index];
+                }
                 __syncthreads();
 
                 wait(&r_ready[bid], 1, tid);
@@ -202,7 +219,7 @@ __global__ void reduce_kernel(int parent,
         else{
             //two children
             for(i=0; i<num_chunks; i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
                 
                 if(tid==0){
                     increment(&r_ready_left[bid]);
@@ -210,7 +227,11 @@ __global__ void reduce_kernel(int parent,
                 }
                 
                 wait(&r_lock_self[bid], 2, tid);
-                self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = self_buff[index]+left_buff[index]+right_buff[index];
+                }
                 __syncthreads();
             
 
@@ -243,7 +264,10 @@ __global__ void broadcast_kernel(int parent,
     int bid = blockIdx.x;
     int gid = bid*blockDim.x + tid;
     int gsize = gridDim.x*blockDim.x;
+
     int i=0;
+    int j=0;
+    int chunkStart = 0;
     int index = 0;
     if (parent==-1){
         //root
@@ -254,11 +278,16 @@ __global__ void broadcast_kernel(int parent,
         if(left == -1 && right == -1){
             // no children
             for(i=0; i<num_chunks; i++){ 
-                index = gsize*i + gid;
+                chunkStart = CHUNK_SIZE*i;
+                
                 if(tid == 0) increment(&b_ready_parent[bid]); 
 
                 wait(&b_lock_self[bid], 1, tid);
-                self_buff[index] = parent_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = parent_buff[index];
+                }
                 __syncthreads();
 
                 if(tid==0) reset(&b_lock_self[bid]);
@@ -268,12 +297,16 @@ __global__ void broadcast_kernel(int parent,
         else if (right == -1){
             // one child
             for(i=0;i<num_chunks;i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
                 
                 if(tid==0) increment(&b_ready_parent[bid]); 
 
                 wait(&b_lock_self[bid], 1, tid);
-                self_buff[index] = parent_buff[index];
+                #pragma unroll 
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = parent_buff[index];
+                }
                 __syncthreads();
 
                 wait(&b_ready[bid], 1, tid);
@@ -288,12 +321,16 @@ __global__ void broadcast_kernel(int parent,
         else{
             // two children
             for(i=0;i<num_chunks;i++){
-                index = gsize*i+gid;
+                chunkStart = CHUNK_SIZE*i;
 
                 if(tid==0) increment(&b_ready_parent[bid]);
 
                 wait(&b_lock_self[bid], 1, tid);
-                self_buff[index] = parent_buff[index];
+                #pragma unroll
+                for(j=0; j<CHUNK_SIZE; j+=gsize){
+                    index = chunkStart + j + gid;
+                    self_buff[index] = parent_buff[index];
+                }
                 __syncthreads();
 
                 wait(&b_ready[bid], 2, tid);

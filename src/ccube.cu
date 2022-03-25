@@ -12,54 +12,97 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 void createCommunicator(struct Node* tree){
-    /*
+     /*
     simple tree
-    
-            0
-            |
-            2
-           / \
-          1   3
+
+             0
+             |
+             2
+           /   \
+          /     \
+         3       6
+        / \     / \
+       1   7   4   5
+            
     */
 
     cudaSetDevice(0);
     cudaDeviceEnablePeerAccess(2,0);
-    cudaStreamCreateWithFlags(&(tree[0].R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[0].B_stream), cudaStreamNonBlocking);
+    tree[0].parent  = -1;
     tree[0].left = 2;
     tree[0].right = -1;
-    tree[0].parent  = -1;
+    cudaStreamCreateWithFlags(&(tree[0].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[0].B_stream), cudaStreamNonBlocking);
     allocateLocks(tree, 0);
 
-
     cudaSetDevice(1);
-    cudaDeviceEnablePeerAccess(2,0);
-    cudaStreamCreateWithFlags(&(tree[1].R_stream), cudaStreamNonBlocking);
-    cudaStreamCreateWithFlags(&(tree[1].B_stream), cudaStreamNonBlocking);
+    cudaDeviceEnablePeerAccess(3,0);
+    tree[1].parent = 3;
     tree[1].left = -1;
     tree[1].right = -1;
-    tree[1].parent = 2;
+    cudaStreamCreateWithFlags(&(tree[1].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[1].B_stream), cudaStreamNonBlocking);
     allocateLocks(tree, 1);
 
     cudaSetDevice(2);
     cudaDeviceEnablePeerAccess(0,0);
-    cudaDeviceEnablePeerAccess(1,0);
     cudaDeviceEnablePeerAccess(3,0);
+    cudaDeviceEnablePeerAccess(6,0);
+    tree[2].parent = 0;
+    tree[2].left = 3;
+    tree[2].right = 6;
     cudaStreamCreateWithFlags(&(tree[2].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[2].B_stream), cudaStreamNonBlocking);
-    tree[2].left = 1;
-    tree[2].right = 3;
-    tree[2].parent = 0;
     allocateLocks(tree, 2);
 
     cudaSetDevice(3);
     cudaDeviceEnablePeerAccess(2,0);
+    cudaDeviceEnablePeerAccess(1,0);
+    cudaDeviceEnablePeerAccess(7,0);
+    tree[3].parent = 2;
+    tree[3].left = 1;
+    tree[3].right = 7;
     cudaStreamCreateWithFlags(&(tree[3].R_stream), cudaStreamNonBlocking);
     cudaStreamCreateWithFlags(&(tree[3].B_stream), cudaStreamNonBlocking);
-    tree[3].left = -1;
-    tree[3].right = -1;
-    tree[3].parent = 2;
     allocateLocks(tree, 3);
+
+    cudaSetDevice(4);
+    cudaDeviceEnablePeerAccess(6,0);
+    tree[4].parent = 6;
+    tree[4].left = -1;
+    tree[4].right = -1;
+    cudaStreamCreateWithFlags(&(tree[4].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[4].B_stream), cudaStreamNonBlocking);
+    allocateLocks(tree, 4);
+
+    cudaSetDevice(5);
+    cudaDeviceEnablePeerAccess(6,0);
+    tree[5].parent = 6;
+    tree[5].left = -1;
+    tree[5].right = -1;
+    cudaStreamCreateWithFlags(&(tree[5].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[5].B_stream), cudaStreamNonBlocking);
+    allocateLocks(tree, 5);
+
+    cudaSetDevice(6);
+    cudaDeviceEnablePeerAccess(2,0);
+    cudaDeviceEnablePeerAccess(4,0);
+    cudaDeviceEnablePeerAccess(5,0);
+    tree[6].parent = 2;
+    tree[6].left = 4;
+    tree[6].right = 5;
+    cudaStreamCreateWithFlags(&(tree[6].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[6].B_stream), cudaStreamNonBlocking);
+    allocateLocks(tree, 6);
+
+    cudaSetDevice(7);
+    cudaDeviceEnablePeerAccess(3,0);
+    tree[7].parent = 3;
+    tree[7].left = -1;
+    tree[7].right = -1;
+    cudaStreamCreateWithFlags(&(tree[7].R_stream), cudaStreamNonBlocking);
+    cudaStreamCreateWithFlags(&(tree[7].B_stream), cudaStreamNonBlocking);
+    allocateLocks(tree, 7);
 }
 
 void killCommunicator(struct Node* tree){
